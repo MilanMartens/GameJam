@@ -67,14 +67,21 @@ class GameView(arcade.View):
         self.left_key_down = False
         self.right_key_down = False
 
-        # Text object to display the score
+        # Text object to display the score linksboven
         self.score_display = arcade.Text(
             "Score: 0",
             x=10,
-            y=10,
+            y=self.window.height - 30,
             color=arcade.csscolor.WHITE,
             font_size=18,
         )
+        # self.score_display = arcade.Text(
+        #     "Score: 0",
+        #     x=10,
+        #     y=10,
+        #     color=arcade.csscolor.WHITE,
+        #     font_size=18,
+        # )
 
     def create_scene(self) -> arcade.Scene:
         """Load the tilemap and create the scene object."""
