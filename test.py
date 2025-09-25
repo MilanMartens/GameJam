@@ -16,12 +16,14 @@ class Player(arcade.Sprite):
 
         if self.time_elapsed > 0.1:
  
-            if self.cur_texture_index < len(self.textures):
+            if self.cur_texture_index < len(self.textures) :
                 self.set_texture(self.cur_texture_index)
                 self.cur_texture_index += 1
+            
             self.time_elapsed = 0
+                
 
-        if self.cur_texture_index == 7:
+        if self.cur_texture_index == 10:
             self.cur_texture_index = 0
 
 class MyGame(arcade.Window):
@@ -34,17 +36,12 @@ class MyGame(arcade.Window):
 
         # testing
         self.sprites_list = arcade.SpriteList()
-        warioSheet = arcade.load_spritesheet("WarioSprites\WarioSpritesRun.png")
-        texture_list = warioSheet.get_texture_grid(size=(40,50), columns=8, count=7)
+        warioSheet = arcade.load_spritesheet("WarioSprites\WarioSpritesAll.png")
+        texture_list = warioSheet.get_texture_grid(size=(30,50), columns=10, count=10)
         self.player = Player(texture_list)
         self.player.position = 640, 360
         self.sprites_list.append(self.player)
-        # # Wario sprite
-        # player = arcade.Sprite("WarioSprites/Run1Wario.png", scale=1.5)
-        # player.center_x = 100
-        # player.center_y = 160  # Slightly above ground
-        # self.sprites.append(player)
-        # self.player = player  # so you can move/collide
+
 
         # Ground tiles
         for x in range(0, WINDOW_WIDTH, 64):
@@ -68,7 +65,6 @@ class MyGame(arcade.Window):
         self.platforms.draw()
         self.sprites.draw()
         self.sprites_list.draw()
-        arcade.draw_text("Wario on a simple map!", 180, 570, arcade.color.WHITE, 18)
 
     def on_update(self, delta_time):
         self.physics_engine.update()
