@@ -2,6 +2,27 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "Arcade Test - Wario on Map"
 
+# testing
+class Player(arcade.Sprite):
+    def __init__(self, texture_list: list[arcade.Texture]):
+        super().__init__(texture_list[0])
+        self.time_elapsed = 0
+        self.textures = texture_list
+
+    def update(self, delta_time: float = 1 / 60, *args, **kwargs) -> None:
+        self.time_elapsed += delta_time
+
+        if self.time_elapsed > 0.1:
+ 
+            if self.cur_texture_index < len(self.textures) :
+                self.set_texture(self.cur_texture_index)
+                self.cur_texture_index += 1
+            
+            self.time_elapsed = 0
+                
+
+        if self.cur_texture_index == 10:
+            self.cur_texture_index = 0
 
 class MyGame(arcade.Window):
     def __init__(self):
@@ -11,12 +32,14 @@ class MyGame(arcade.Window):
         self.sprites = arcade.SpriteList()
         self.platforms = arcade.SpriteList()
 
-        # Wario sprite
-        player = arcade.Sprite("WarioSprites/Run1Wario.png", scale=1)
-        player.center_x = 100
-        player.center_y = 160  # Slightly above ground
-        self.sprites.append(player)
-        self.player = player  # so you can move/collide
+        # testing
+        self.sprites_list = arcade.SpriteList()
+        warioSheet = arcade.load_spritesheet("WarioSprites\WarioSpritesAll.png")
+        texture_list = warioSheet.get_texture_grid(size=(30,50), columns=10, count=10)
+        self.player = Player(texture_list)
+        self.player.position = 640, 360
+        self.sprites_list.append(self.player)
+
 
         # Ground tiles
         for x in range(0, WINDOW_WIDTH, 64):
@@ -39,10 +62,11 @@ class MyGame(arcade.Window):
         self.clear()
         self.platforms.draw()
         self.sprites.draw()
-        arcade.draw_text("Wario on a simple map!", 180, 570, arcade.color.WHITE, 18)
+        self.sprites_list.draw()
 
     def on_update(self, delta_time):
         self.physics_engine.update()
+        self.sprites_list.update()
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
