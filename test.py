@@ -1,28 +1,67 @@
-import arcade
-from pathlib import Path
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+WINDOW_TITLE = "Arcade Test - Wario on Map"
 
-window = arcade.Window(title="Arcade Window")
-window.center_window()
 
-assets_path = Path().absolute().resolve() / Path("assets")
-arcade.resources.add_resource_handle("my-assets", assets_path)
-
-class GameView(arcade.View):
+class MyGame(arcade.Window):
     def __init__(self):
-        super().__init__()
-        self.level1 = arcade.load_tilemap(":my-assets:maps/level1/map1.tmx")
+        super().__init__(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
 
-        # self.player_list = arcade.SpriteList()
-        # self.player_list.append()
+        # Sprite lists
+        self.sprites = arcade.SpriteList()
+        self.platforms = arcade.SpriteList()
 
-    def on_show(self):
-        arcade.set_background_color(arcade.color.AMAZON)
+        # Wario sprite
+        player = arcade.Sprite("WarioSprites/Run1Wario.png", scale=1)
+        player.center_x = 100
+        player.center_y = 160  # Slightly above ground
+        self.sprites.append(player)
+        self.player = player  # so you can move/collide
+
+        # Ground tiles
+        for x in range(0, WINDOW_WIDTH, 64):
+            tile = arcade.Sprite(":resources:images/tiles/stoneMid.png", scale=0.5)
+            tile.center_x = x + 32  # tile width / 2
+            tile.center_y = 32  # on ground
+            self.platforms.append(tile)
+
+        # A floating platform
+        for x in range(300, 500, 64):
+            tile = arcade.Sprite(":resources:images/tiles/grassMid.png", scale=0.5)
+            tile.center_x = x + 32
+            tile.center_y = 200
+            self.platforms.append(tile)
+
+        # Simple physics
+        self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.platforms, gravity_constant=0.7)
 
     def on_draw(self):
         self.clear()
-        self.level1.sprite_lists["ground"].draw()
-        
+        self.platforms.draw()
+        self.sprites.draw()
+        arcade.draw_text("Wario on a simple map!", 180, 570, arcade.color.WHITE, 18)
 
-game = GameView()
-window.show_view(game)
-arcade.run()
+    def on_update(self, delta_time):
+        self.physics_engine.update()
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.LEFT:
+            self.player.change_x = -4
+        elif key == arcade.key.RIGHT:
+            self.player.change_x = 4
+        elif key == arcade.key.UP:
+            if self.physics_engine.can_jump():
+                self.player.change_y = 13
+
+    def on_key_release(self, key, modifiers):
+        if key in (arcade.key.LEFT, arcade.key.RIGHT):
+            self.player.change_x = 0
+
+
+def main():
+    game = MyGame()
+    arcade.run()
+
+
+if __name__ == "__main__":
+    main()
