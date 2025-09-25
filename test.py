@@ -1,5 +1,3 @@
-import arcade
-
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "Arcade Test - Wario on Map"
