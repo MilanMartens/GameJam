@@ -33,6 +33,36 @@ def save_highscore(score):
     except:
         pass  # Silently fail if we can't save
 
+# Shop data file
+SHOP_DATA_FILE = "shop_data.json"
+
+def load_shop_data():
+    """Load shop data from file"""
+    try:
+        if os.path.exists(SHOP_DATA_FILE):
+            with open(SHOP_DATA_FILE, 'r') as f:
+                return json.load(f)
+        # Default shop data
+        return {
+            'coins': 50,
+            'purchased_items': [],
+            'equipped_skin': 'normal'  # 'normal' or 'shiny'
+        }
+    except:
+        return {
+            'coins': 50,
+            'purchased_items': [],
+            'equipped_skin': 'normal'
+        }
+
+def save_shop_data(shop_data):
+    """Save shop data to file"""
+    try:
+        with open(SHOP_DATA_FILE, 'w') as f:
+            json.dump(shop_data, f)
+    except:
+        pass  # Silently fail if we can't save
+
 
 class Collectable(arcade.Sprite):
     """ This class represents something the player collects. """
@@ -170,6 +200,9 @@ class StartView(arcade.View):
         # Load highscore
         self.highscore = load_highscore()
         
+        # Load shop data
+        self.shop_data = load_shop_data()
+        
 
     
     def on_draw(self):
@@ -208,6 +241,18 @@ class StartView(arcade.View):
                 font_name="Arial",
                 bold=True
             )
+        
+        # Draw coins below highscore
+        arcade.draw_text(
+            f"Coins: {self.shop_data['coins']}",
+            20,
+            self.window.height - 70,
+            arcade.color.GOLD,
+            font_size=20,
+            anchor_x="left",
+            font_name="Arial",
+            bold=True
+        )
             
         # Draw Item Shop button in top-right corner
         shop_button_width = 150
@@ -341,6 +386,19 @@ class GameOverView(arcade.View):
             bold=self.is_new_highscore
         )
         
+        # Draw coins earned
+        coins_earned = self.final_score // 5
+        if coins_earned > 0:
+            arcade.draw_text(
+                f"Coins Earned: +{coins_earned}",
+                center_x,
+                center_y - 20,
+                arcade.color.GOLD,
+                font_size=20,
+                anchor_x="center",
+                font_name="Arial"
+            )
+        
         # Draw NEW HIGHSCORE message if applicable
         if self.is_new_highscore:
             # Animated glow effect
@@ -471,30 +529,101 @@ class ItemShopView(arcade.View):
         super().__init__()
         self.background_color = arcade.color.PURPLE
         
-        # Create sprite list for the shiny wario sprite
-        self.sprite_list = arcade.SpriteList()
+        # Shop items data
+        self.shop_items = [
+            {
+                "id": "normal_wario",
+                "name": "Normal Wario",
+                "price": 0,
+                "description": "Classic Wario appearance",
+                "sprite_path": "WarioSprites/SSWario.png",
+                "always_owned": True
+            },
+            {
+                "id": "shiny_wario", 
+                "name": "Shiny Wario Skin",
+                "price": 40,
+                "description": "Unlock the shiny appearance!",
+                "sprite_path": "ShinyWarioSprites/SSWarioShiny.png",
+                "always_owned": False
+            }
+        ]
         
-        # Load Shiny Wario sprite
-        self.shiny_wario_sprite = None
-        try:
-            self.shiny_wario_sprite = arcade.Sprite("ShinyWarioSprites/SSWarioShiny.png", scale=2.0)
-            self.sprite_list.append(self.shiny_wario_sprite)
-        except Exception as e:
-            print(f"Could not load Shiny Wario sprite: {e}")
+        # Create sprite lists for shop items
+        self.item_sprites = {}
+        self.sprite_lists = {}
         
-        # Shop item data
-        self.shop_item = {
-            "name": "Shiny Wario Skin",
-            "price": 40,
-            "description": "Unlock the shiny appearance!"
-        }
+        # Load sprites for each shop item
+        for item in self.shop_items:
+            try:
+                sprite = arcade.Sprite(item["sprite_path"], scale=1.5)
+                sprite_list = arcade.SpriteList()
+                sprite_list.append(sprite)
+                self.item_sprites[item["id"]] = sprite
+                self.sprite_lists[item["id"]] = sprite_list
+            except Exception as e:
+                print(f"Could not load {item['name']} sprite: {e}")
+                self.item_sprites[item["id"]] = None
+                self.sprite_lists[item["id"]] = arcade.SpriteList()
         
-        # Purchase state
-        self.item_purchased = False
-        self.player_coins = 50  # Give player some coins for testing
+        # Load shop data from file
+        self.shop_data = load_shop_data()
+        self.item_purchased = "shiny_wario" in self.shop_data['purchased_items']
+        self.player_coins = self.shop_data['coins']
         
         # Animation variables
         self.animation_timer = 0.0
+    
+    def draw_action_button(self, item, button_x, button_y, button_width, button_height, is_equipped):
+        """Draw action button for an item (Buy/Equip/Equipped)"""
+        equipped_skin = self.shop_data.get('equipped_skin', 'normal')
+        is_owned = item['always_owned'] or item['id'] in self.shop_data['purchased_items']
+        
+        if is_equipped:
+            button_color = arcade.color.GRAY
+            border_color = arcade.color.DARK_GRAY
+            button_text = "EQUIPPED"
+            text_color = arcade.color.WHITE
+        elif is_owned:
+            button_color = arcade.color.BLUE
+            border_color = arcade.color.DARK_BLUE
+            button_text = "EQUIP"
+            text_color = arcade.color.WHITE
+        elif self.player_coins >= item["price"]:
+            button_color = arcade.color.GREEN
+            border_color = arcade.color.DARK_GREEN
+            button_text = "BUY"
+            text_color = arcade.color.WHITE
+        else:
+            button_color = arcade.color.RED
+            border_color = arcade.color.DARK_RED
+            button_text = "NEED COINS"
+            text_color = arcade.color.WHITE
+        
+        # Button background
+        arcade.draw_lrbt_rectangle_filled(
+            button_x, button_x + button_width,
+            button_y, button_y + button_height,
+            button_color
+        )
+        
+        # Button border
+        arcade.draw_lrbt_rectangle_outline(
+            button_x, button_x + button_width,
+            button_y, button_y + button_height,
+            border_color, 2
+        )
+        
+        # Button text
+        arcade.draw_text(
+            button_text,
+            button_x + button_width // 2,
+            button_y + button_height // 2 - 6,
+            text_color,
+            font_size=12,
+            anchor_x="center",
+            bold=True
+        )
         
     def on_draw(self):
         """Draw the item shop screen"""
@@ -506,7 +635,7 @@ class ItemShopView(arcade.View):
         
         # Draw title
         arcade.draw_text(
-            "ITEM SHOP",
+            "SKIN SHOP",
             center_x,
             self.window.height - 60,
             arcade.color.GOLD,
@@ -524,146 +653,103 @@ class ItemShopView(arcade.View):
             bold=True
         )
         
-        # Draw shop item box
-        item_width = 400
-        item_height = 300
-        item_x = center_x - item_width // 2
-        item_y = center_y - item_height // 2
-        
-        # Item background
-        arcade.draw_lrbt_rectangle_filled(
-            item_x, item_x + item_width,
-            item_y, item_y + item_height,
-            arcade.color.DARK_BLUE
+        # Draw current equipped skin
+        equipped_skin = self.shop_data.get('equipped_skin', 'normal')
+        arcade.draw_text(
+            f"Current: {'Shiny Wario' if equipped_skin == 'shiny' else 'Normal Wario'}",
+            self.window.width - 50,
+            self.window.height - 50,
+            arcade.color.CYAN,
+            font_size=20,
+            anchor_x="right",
+            bold=True
         )
         
-        # Item border
-        arcade.draw_lrbt_rectangle_outline(
-            item_x, item_x + item_width,
-            item_y, item_y + item_height,
-            arcade.color.GOLD, 3
-        )
+        # Draw both shop items side by side
+        item_width = 300
+        item_height = 350
+        spacing = 50
+        start_x = center_x - (2 * item_width + spacing) // 2
         
-        # Position and animate Shiny Wario sprite
-        if self.shiny_wario_sprite:
-            # Floating animation - move up and down
-            float_offset = math.sin(self.animation_timer * 2) * 15
+        for i, item in enumerate(self.shop_items):
+            item_x = start_x + i * (item_width + spacing)
+            item_y = center_y - item_height // 2
             
-            # Scale animation - pulse effect
-            scale_base = 2.0
-            scale_variation = math.sin(self.animation_timer * 3) * 0.2
-            self.shiny_wario_sprite.scale = scale_base + scale_variation
+            # Item background - highlight if equipped
+            is_equipped = (equipped_skin == 'normal' and item['id'] == 'normal_wario') or (equipped_skin == 'shiny' and item['id'] == 'shiny_wario')
+            bg_color = arcade.color.DARK_GREEN if is_equipped else arcade.color.DARK_BLUE
+            border_color = arcade.color.GREEN if is_equipped else arcade.color.GOLD
             
-            # Rotation animation - slight wobble
-            rotation_offset = math.sin(self.animation_timer * 1.5) * 5
-            self.shiny_wario_sprite.angle = rotation_offset
+            arcade.draw_lrbt_rectangle_filled(
+                item_x, item_x + item_width,
+                item_y, item_y + item_height,
+                bg_color
+            )
             
-            # Position with floating effect
-            self.shiny_wario_sprite.center_x = center_x
-            self.shiny_wario_sprite.center_y = center_y + 50 + float_offset
+            arcade.draw_lrbt_rectangle_outline(
+                item_x, item_x + item_width,
+                item_y, item_y + item_height,
+                border_color, 3 if is_equipped else 2
+            )
             
-            self.sprite_list.draw()
-        else:
-            # Animated fallback if sprite couldn't be loaded
-            float_offset = math.sin(self.animation_timer * 2) * 10
-            pulse_size = 40 + math.sin(self.animation_timer * 3) * 5
+            # Position and animate sprite
+            sprite = self.item_sprites.get(item['id'])
+            if sprite:
+                # Floating animation
+                float_offset = math.sin(self.animation_timer * 2 + i) * 10
+                
+                # Scale animation
+                scale_base = 1.5
+                scale_variation = math.sin(self.animation_timer * 3 + i) * 0.1
+                sprite.scale = scale_base + scale_variation
+                
+                # Position sprite
+                sprite.center_x = item_x + item_width // 2
+                sprite.center_y = item_y + item_height - 100 + float_offset
+                
+                self.sprite_lists[item['id']].draw()
             
-            arcade.draw_circle_filled(center_x, center_y + 50 + float_offset, pulse_size, arcade.color.GOLD)
-            arcade.draw_circle_outline(center_x, center_y + 50 + float_offset, pulse_size, arcade.color.ORANGE, 3)
+            # Item name
             arcade.draw_text(
-                "SHINY",
-                center_x,
-                center_y + 50 + float_offset,
-                arcade.color.BLACK,
-                font_size=14,
+                item["name"],
+                item_x + item_width // 2,
+                item_y + 120,
+                arcade.color.GOLD,
+                font_size=20,
                 anchor_x="center",
                 bold=True
             )
-        
-        # Item name
-        arcade.draw_text(
-            self.shop_item["name"],
-            center_x,
-            center_y - 50,
-            arcade.color.GOLD,
-            font_size=24,
-            anchor_x="center",
-            bold=True
-        )
-        
-        # Item description
-        arcade.draw_text(
-            self.shop_item["description"],
-            center_x,
-            center_y - 80,
-            arcade.color.WHITE,
-            font_size=16,
-            anchor_x="center"
-        )
-        
-        # Item price
-        arcade.draw_text(
-            f"Price: {self.shop_item['price']} coins",
-            center_x,
-            center_y - 110,
-            arcade.color.YELLOW,
-            font_size=20,
-            anchor_x="center",
-            bold=True
-        )
-        
-        # Buy button
-        button_width = 200
-        button_height = 50
-        button_x = center_x - button_width // 2
-        button_y = center_y - 180
-        
-        # Determine button appearance based on purchase state and affordability
-        if self.item_purchased:
-            button_color = arcade.color.GRAY
-            border_color = arcade.color.DARK_GRAY
-            button_text = "PURCHASED"
-            text_color = arcade.color.WHITE
-        elif self.player_coins >= self.shop_item["price"]:
-            button_color = arcade.color.GREEN
-            border_color = arcade.color.DARK_GREEN
-            button_text = "BUY NOW"
-            text_color = arcade.color.WHITE
-        else:
-            button_color = arcade.color.RED
-            border_color = arcade.color.DARK_RED
-            button_text = "NOT ENOUGH COINS"
-            text_color = arcade.color.WHITE
-        
-        # Button background
-        arcade.draw_lrbt_rectangle_filled(
-            button_x,
-            button_x + button_width,
-            button_y,
-            button_y + button_height,
-            button_color
-        )
-        
-        # Button border
-        arcade.draw_lrbt_rectangle_outline(
-            button_x,
-            button_x + button_width,
-            button_y,
-            button_y + button_height,
-            border_color,
-            3
-        )
-        
-        # Button text
-        arcade.draw_text(
-            button_text,
-            center_x,
-            button_y + button_height // 2 - 8,
-            text_color,
-            font_size=16 if button_text == "NOT ENOUGH COINS" else 20,
-            anchor_x="center",
-            bold=True
-        )
+            
+            # Item description
+            arcade.draw_text(
+                item["description"],
+                item_x + item_width // 2,
+                item_y + 90,
+                arcade.color.WHITE,
+                font_size=14,
+                anchor_x="center"
+            )
+            
+            # Price (if not free)
+            if item["price"] > 0:
+                arcade.draw_text(
+                    f"Price: {item['price']} coins",
+                    item_x + item_width // 2,
+                    item_y + 60,
+                    arcade.color.YELLOW,
+                    font_size=16,
+                    anchor_x="center",
+                    bold=True
+                )
+            
+            # Action button
+            button_width = 120
+            button_height = 35
+            button_x = item_x + (item_width - button_width) // 2
+            button_y = item_y + 15
+            
+            self.draw_action_button(item, button_x, button_y, button_width, button_height, is_equipped)
+
         
         # Back instruction
         arcade.draw_text(
@@ -684,29 +770,57 @@ class ItemShopView(arcade.View):
         center_x = self.window.width // 2
         center_y = self.window.height // 2
         
-        # Buy button coordinates
-        button_width = 200
-        button_height = 50
-        button_x = center_x - button_width // 2
-        button_y = center_y - 180
+        # Check clicks on item buttons
+        item_width = 300
+        item_height = 350
+        spacing = 50
+        start_x = center_x - (2 * item_width + spacing) // 2
         
-        # Check if clicking on buy button
-        if (button_x <= x <= button_x + button_width and
-            button_y <= y <= button_y + button_height):
-            # Handle purchase
-            if not self.item_purchased and self.player_coins >= self.shop_item["price"]:
-                # Deduct coins and mark as purchased
-                self.player_coins -= self.shop_item["price"]
-                self.item_purchased = True
-                print(f"Item purchased! Remaining coins: {self.player_coins}")
-            elif self.item_purchased:
-                print("Item already purchased!")
-            else:
-                print("Not enough coins!")
-        else:
-            # Return to start screen when clicking elsewhere
-            start_view = StartView()
-            self.window.show_view(start_view)
+        for i, item in enumerate(self.shop_items):
+            item_x = start_x + i * (item_width + spacing)
+            item_y = center_y - item_height // 2
+            
+            # Button coordinates
+            button_width = 120
+            button_height = 35
+            button_x = item_x + (item_width - button_width) // 2
+            button_y = item_y + 15
+            
+            # Check if clicking on this item's button
+            if (button_x <= x <= button_x + button_width and
+                button_y <= y <= button_y + button_height):
+                
+                equipped_skin = self.shop_data.get('equipped_skin', 'normal')
+                is_owned = item['always_owned'] or item['id'] in self.shop_data['purchased_items']
+                is_equipped = (equipped_skin == 'normal' and item['id'] == 'normal_wario') or (equipped_skin == 'shiny' and item['id'] == 'shiny_wario')
+                
+                if is_equipped:
+                    print(f"{item['name']} is already equipped!")
+                elif is_owned:
+                    # Equip the skin
+                    new_skin = 'shiny' if item['id'] == 'shiny_wario' else 'normal'
+                    self.shop_data['equipped_skin'] = new_skin
+                    save_shop_data(self.shop_data)
+                    print(f"{item['name']} equipped!")
+                elif self.player_coins >= item["price"]:
+                    # Purchase and equip
+                    self.player_coins -= item["price"]
+                    self.shop_data['coins'] = self.player_coins
+                    self.shop_data['purchased_items'].append(item['id'])
+                    
+                    # Auto-equip the new skin
+                    new_skin = 'shiny' if item['id'] == 'shiny_wario' else 'normal'
+                    self.shop_data['equipped_skin'] = new_skin
+                    
+                    save_shop_data(self.shop_data)
+                    print(f"{item['name']} purchased and equipped! Remaining coins: {self.player_coins}")
+                else:
+                    print("Not enough coins!")
+                return
+        
+        # If clicked elsewhere, return to start screen
+        start_view = StartView()
+        self.window.show_view(start_view)
         
     def on_key_press(self, key, modifiers):
         """Handle key presses"""
@@ -834,12 +948,26 @@ class GameView(arcade.View):
         self.background_timer = 0.0
 
     def setup_player_animations(self):
+        # Load shop data to check equipped skin
+        shop_data = load_shop_data()
+        equipped_skin = shop_data.get('equipped_skin', 'normal')
+        
+        # Choose sprite paths based on equipped skin
+        if equipped_skin == 'shiny':
+            idle_sprite_path = "ShinyWarioSprites/SSWarioShiny.png"
+            spritesheet_right_path = "ShinyWarioSprites/WarioSpritesAllShiny.png"
+            spritesheet_left_path = "ShinyWarioSprites/WarioSpritesAllShinyBackwards.png"
+        else:
+            idle_sprite_path = "WarioSprites/SSWario.png"
+            spritesheet_right_path = "WarioSprites/WarioSpritesAll.png"
+            spritesheet_left_path = "WarioSprites/WarioSpritesAllBackwards.png"
+        
         # Load idle PNG for no key pressed
-        self.idle_texture_still = arcade.load_texture("WarioSprites/SSWario.png")
+        self.idle_texture_still = arcade.load_texture(idle_sprite_path)
         """Setup Wario animations from spritesheet"""
         # Load both spritesheets
-        self.spritesheet_right = arcade.load_texture("WarioSprites/WarioSpritesAll.png")
-        self.spritesheet_left = arcade.load_texture("WarioSprites/WarioSpritesAllBackwards.png")
+        self.spritesheet_right = arcade.load_texture(spritesheet_right_path)
+        self.spritesheet_left = arcade.load_texture(spritesheet_left_path)
 
         # Idle animations
         self.idle_texture_list_right = []
@@ -1250,6 +1378,12 @@ class GameView(arcade.View):
                 coin.changed = True
                 coin.collection_timer = 0.0  # Initialize collection timer
                 self.score += 1
+                
+                # Award coins for collecting burgers (1 coin per 5 burgers)
+                if self.score % 5 == 0:
+                    shop_data = load_shop_data()
+                    shop_data['coins'] += 1
+                    save_shop_data(shop_data)
                 
                 # Make Wario fatter with each burger collected
                 current_scale = self.player_sprite.scale
