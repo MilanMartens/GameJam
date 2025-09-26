@@ -84,7 +84,7 @@ class StartView(arcade.View):
     
     def __init__(self):
         super().__init__()
-        self.background_color = arcade.color.DARK_BLUE
+        self.background_color = (0, 16, 56)  # #001038
         
         # Create sprite list for titlescreen
         self.titlescreen_list = arcade.SpriteList()
@@ -139,7 +139,7 @@ class StartView(arcade.View):
             self.window.set_fullscreen(not self.window.fullscreen)
         elif key == arcade.key.ESCAPE:
             # Quit the game
-            
+
             self.window.close()
 
 
@@ -154,9 +154,9 @@ class GameOverView(arcade.View):
         # Button system
         self.selected_button = 0  # 0 = Restart, 1 = Start Screen, 2 = Quit
         self.buttons = [
-            {"text": "RESTART GAME",  "action": "restart"},
-            {"text": "START SCREEN",  "action": "start_screen"},
-            {"text": "QUIT GAME",  "action": "quit"}
+            {"text": "RESTART GAME", "action": "restart"},
+            {"text": "START SCREEN", "action": "start_screen"},
+            {"text": "QUIT GAME", "action": "quit"}
         ]
         
         # Animation timer for button glow effect
@@ -687,6 +687,15 @@ class GameView(arcade.View):
                 coin.changed = True
                 coin.collection_timer = 0.0  # Initialize collection timer
                 self.score += 1
+                
+                # Make Wario fatter with each burger collected
+                current_scale = self.player_sprite.scale
+                if isinstance(current_scale, tuple):
+                    # If scale is a tuple, increase both x and y scale
+                    self.player_sprite.scale = (current_scale[0] + 0.1, current_scale[1] + 0.1)
+                else:
+                    # If scale is a float, just add to it
+                    self.player_sprite.scale = current_scale + 0.1
                 
                 # Play collection sound
                 if self.collect_sound:
