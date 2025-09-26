@@ -1447,33 +1447,40 @@ class GameView(arcade.View):
             game_over_view = GameOverView(self.score)
             self.window.show_view(game_over_view)
             
-        # Check for collision with enemies (lose coins and scale down)
+        # Check for collision with enemies
         enemy_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.enemy_list)
         if enemy_hit_list:
-            # Remove the enemy that hit the player
-            for enemy in enemy_hit_list:
-                enemy.remove_from_sprite_lists()
-            
-            # Lose coins and scale down Wario
-            shop_data = load_shop_data()
-            coins_lost = min(5, shop_data['coins'])  # Lose up to 5 coins
-            shop_data['coins'] = max(0, shop_data['coins'] - coins_lost)  # Don't go below 0
-            save_shop_data(shop_data)
-            
-            # Make Wario smaller (reverse of the growth from collecting burgers)
-            current_scale = self.player_sprite.scale
-            if isinstance(current_scale, tuple):
-                # If scale is a tuple, decrease both x and y scale
-                new_scale_x = max(1.5, current_scale[0] - 0.2)  # Don't go below minimum size
-                new_scale_y = max(1.5, current_scale[1] - 0.2)
-                self.player_sprite.scale = (new_scale_x, new_scale_y)
+            # If player has score less than 5, game over
+            if self.score < 5:
+                # Play die sound
+                if self.die_sound:
+                    arcade.play_sound(self.die_sound)
+                
+                # Player hit an enemy with low score - game over!
+                game_over_view = GameOverView(self.score)
+                self.window.show_view(game_over_view)
             else:
-                # If scale is a float, subtract from it
-                self.player_sprite.scale = max(1.5, current_scale - 0.2)  # Don't go below minimum size
-            
-            # Play die sound as feedback
-            if self.die_sound:
-                arcade.play_sound(self.die_sound)
+                # Remove the enemy that hit the player
+                for enemy in enemy_hit_list:
+                    enemy.remove_from_sprite_lists()
+                
+                # Lose score points and scale down Wario (continue playing)
+                self.score = max(0, self.score - 1)  # Lose 1 score point, don't go below 0
+                
+                # Make Wario smaller (reverse of the growth from collecting burgers)
+                current_scale = self.player_sprite.scale
+                if isinstance(current_scale, tuple):
+                    # If scale is a tuple, decrease both x and y scale
+                    new_scale_x = max(1.5, current_scale[0] - 0.2)  # Don't go below minimum size
+                    new_scale_y = max(1.5, current_scale[1] - 0.2)
+                    self.player_sprite.scale = (new_scale_x, new_scale_y)
+                else:
+                    # If scale is a float, subtract from it
+                    self.player_sprite.scale = max(1.5, current_scale - 0.2)  # Don't go below minimum size
+                
+                # Play die sound as feedback
+                if self.die_sound:
+                    arcade.play_sound(self.die_sound)
 
 
 def main():
