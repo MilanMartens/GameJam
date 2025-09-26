@@ -11,7 +11,7 @@ WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 WINDOW_TITLE = "Sprite Change Coins"
 
-HIGHSCORE_FILE = "highscore.json"
+HIGHSCORE_FILE = "data/saves/highscore.json"
 
 def load_highscore():
     """Load highscore from file, return 0 if file doesn't exist"""
@@ -30,6 +30,36 @@ def save_highscore(score):
         data = {'highscore': score}
         with open(HIGHSCORE_FILE, 'w') as f:
             json.dump(data, f)
+    except:
+        pass  # Silently fail if we can't save
+
+# Shop data file
+SHOP_DATA_FILE = "data/saves/shop_data.json"
+
+def load_shop_data():
+    """Load shop data from file"""
+    try:
+        if os.path.exists(SHOP_DATA_FILE):
+            with open(SHOP_DATA_FILE, 'r') as f:
+                return json.load(f)
+        # Default shop data
+        return {
+            'coins': 50,
+            'purchased_items': [],
+            'equipped_skin': 'normal'  # 'normal' or 'shiny'
+        }
+    except:
+        return {
+            'coins': 50,
+            'purchased_items': [],
+            'equipped_skin': 'normal'
+        }
+
+def save_shop_data(shop_data):
+    """Save shop data to file"""
+    try:
+        with open(SHOP_DATA_FILE, 'w') as f:
+            json.dump(shop_data, f)
     except:
         pass  # Silently fail if we can't save
 
@@ -63,7 +93,7 @@ class Collectable(arcade.Sprite):
     def setup_burger_animation(self):
         """Setup burger texture"""
         # Load the single burger image
-        burger_texture = arcade.load_texture("WarioSprites/burger.png")
+        burger_texture = arcade.load_texture("assets/images/sprites/wario/normal/burger.png")
         
         # Create animation frames list with just one frame
         self.animation_frames = [burger_texture]
@@ -106,10 +136,11 @@ class Collectable(arcade.Sprite):
 class Enemy(arcade.Sprite):
     """Enemy sprite that moves horizontally across screen"""
     
-    def __init__(self, scale, direction, window_width=1280):
+    def __init__(self, scale, direction, window_width=1280, speed_multiplier=1.0):
         super().__init__(scale=scale)
         self.direction = direction  # 1 for right, -1 for left
         self.window_width = window_width  # Store window width for boundary checking
+        self.speed_multiplier = speed_multiplier  # Difficulty scaling
         
         # Load random food texture from food folder
         food_files = [
@@ -124,13 +155,13 @@ class Enemy(arcade.Sprite):
         # Choose random food sprite
         random_food = random.choice(food_files)
         try:
-            self.texture = arcade.load_texture(f"food/{random_food}")
+            self.texture = arcade.load_texture(f"assets/images/sprites/food/{random_food}")
         except:
             # Fallback to Wario sprite if food sprite fails to load
-            self.texture = arcade.load_texture("WarioSprites/Run1Wario.png")
+            self.texture = arcade.load_texture("assets/images/sprites/wario/normal/Run1Wario.png")
         
-        # Set horizontal speed
-        self.speed = random.uniform(3.0, 6.0)  # Random speed between 3-6 (increased from 2-4)
+        # Set horizontal speed (original settings)
+        self.speed = random.uniform(3.0, 6.0) * self.speed_multiplier  # Original speed range
         self.change_x = self.speed * self.direction
         
         # Set rotation speed (random spin speed)
@@ -154,14 +185,14 @@ class StartView(arcade.View):
     
     def __init__(self):
         super().__init__()
-        self.background_color = (0, 16, 56)  # #001038
+        self.background_color = (0, 13, 55)  # #000D37
         
         # Create sprite list for titlescreen
         self.titlescreen_list = arcade.SpriteList()
         
         # Load the titlescreen image
         try:
-            self.titlescreen_sprite = arcade.Sprite("WarioSprites/titlescreen.png")
+            self.titlescreen_sprite = arcade.Sprite("assets/images/titlescreen/titlescreen.png")
             self.titlescreen_list.append(self.titlescreen_sprite)
         except:
             # If loading fails, create empty list
@@ -169,6 +200,9 @@ class StartView(arcade.View):
             
         # Load highscore
         self.highscore = load_highscore()
+        
+        # Load shop data
+        self.shop_data = load_shop_data()
         
 
     
@@ -196,18 +230,67 @@ class StartView(arcade.View):
             # Fallback if titlescreen can't be loaded - no text, just show blank screen
             pass
             
-        # Draw highscore in top-right corner
+        # Draw highscore in top-left corner
         if self.highscore > 0:
             arcade.draw_text(
                 f"High Score: {self.highscore}",
-                self.window.width - 20,
+                20,
                 self.window.height - 40,
                 arcade.color.YELLOW,
                 font_size=24,
-                anchor_x="right",
+                anchor_x="left",
                 font_name="Arial",
                 bold=True
             )
+        
+        # Draw coins below highscore
+        arcade.draw_text(
+            f"Coins: {self.shop_data['coins']}",
+            20,
+            self.window.height - 70,
+            arcade.color.GOLD,
+            font_size=20,
+            anchor_x="left",
+            font_name="Arial",
+            bold=True
+        )
+            
+        # Draw Item Shop button in top-right corner
+        shop_button_width = 150
+        shop_button_height = 40
+        shop_button_x = self.window.width - shop_button_width - 20
+        shop_button_y = self.window.height - shop_button_height - 20
+        
+        # Button background
+        arcade.draw_lrbt_rectangle_filled(
+            shop_button_x,
+            shop_button_x + shop_button_width,
+            shop_button_y,
+            shop_button_y + shop_button_height,
+            arcade.color.DARK_BLUE
+        )
+        
+        # Button border
+        arcade.draw_lrbt_rectangle_outline(
+            shop_button_x,
+            shop_button_x + shop_button_width,
+            shop_button_y,
+            shop_button_y + shop_button_height,
+            arcade.color.LIGHT_BLUE,
+            3
+        )
+        
+        # Button text
+        arcade.draw_text(
+            "ITEM SHOP",
+            shop_button_x + shop_button_width // 2,
+            shop_button_y + shop_button_height // 2 - 8,
+            arcade.color.WHITE,
+            font_size=16,
+            anchor_x="center",
+            font_name="Arial",
+            bold=True
+        )
 
     
     def on_update(self, delta_time):
@@ -228,6 +311,19 @@ class StartView(arcade.View):
             # Quit the game
 
             self.window.close()
+    
+    def on_mouse_press(self, x, y, button, modifiers):
+        """Handle mouse clicks on start screen"""
+        # Simple check: if click is in the right half of the top part of screen, go to item shop
+        if x > self.window.width * 0.5 and y > self.window.height * 0.7:
+            # Open item shop
+            item_shop_view = ItemShopView()
+            self.window.show_view(item_shop_view)
+        else:
+            # Start game when clicking anywhere else on start screen
+            game_view = GameView()
+            game_view.setup()
+            self.window.show_view(game_view)
 
 
 class GameOverView(arcade.View):
@@ -262,47 +358,86 @@ class GameOverView(arcade.View):
         """Draw the game over screen"""
         self.clear()
         
+        # Draw gradient background
+        for i in range(8):
+            t = i / 7
+            r = int(20 * (1 - t) + 60 * t)
+            g = int(0 * (1 - t) + 0 * t)
+            b = int(40 * (1 - t) + 80 * t)
+            
+            arcade.draw_lrbt_rectangle_filled(
+                0, self.window.width,
+                (self.window.height / 8) * i,
+                (self.window.height / 8) * (i + 1),
+                (r, g, b)
+            )
+        
         # Use actual window dimensions for proper centering in fullscreen
         center_x = self.window.width // 2
         center_y = self.window.height // 2
         
-        # Draw "GAME OVER" text
+        # Draw "GAME OVER" text with shadow effect
+        # Shadow
+        arcade.draw_text(
+            "GAME OVER",
+            center_x + 3,
+            center_y + 147,
+            arcade.color.BLACK,
+            font_size=60,
+            anchor_x="center",
+            font_name="Arial",
+            bold=True
+        )
+        # Main text
         arcade.draw_text(
             "GAME OVER",
             center_x,
-            center_y + 50,
+            center_y + 150,
             arcade.color.RED,
-            font_size=50,
+            font_size=60,
             anchor_x="center",
             font_name="Arial",
             bold=True
         )
         
-        # Draw final score
+        # Draw final score with better spacing
         score_color = arcade.color.YELLOW if self.is_new_highscore else arcade.color.WHITE
         arcade.draw_text(
             f"Final Score: {self.final_score}",
             center_x,
-            center_y + 10,
+            center_y + 80,
             score_color,
-            font_size=30,
+            font_size=32,
             anchor_x="center",
             font_name="Arial",
             bold=self.is_new_highscore
         )
         
-        # Draw NEW HIGHSCORE message if applicable
-        if self.is_new_highscore:
-            # Animated glow effect
-            glow_alpha = int(128 + 127 * math.sin(self.animation_timer * 8))
-            glow_color = (*arcade.color.GOLD[:3], glow_alpha)
-            
+        # Draw coins earned with better positioning
+        coins_earned = self.final_score // 5
+        if coins_earned > 0:
             arcade.draw_text(
-                "NEW HIGH SCORE!",
+                f"Coins Earned: +{coins_earned}",
                 center_x,
-                center_y - 30,
+                center_y + 40,
                 arcade.color.GOLD,
                 font_size=24,
+                anchor_x="center",
+                font_name="Arial",
+                bold=True
+            )
+        
+        # Draw NEW HIGHSCORE message or current highscore with better positioning
+        if self.is_new_highscore:
+            # Animated glow effect with pulsing text
+            pulse_scale = 1.0 + 0.1 * math.sin(self.animation_timer * 8)
+            
+            arcade.draw_text(
+                "🏆 NEW HIGH SCORE! 🏆",
+                center_x,
+                center_y + 5,
+                arcade.color.GOLD,
+                font_size=int(26 * pulse_scale),
                 anchor_x="center",
                 font_name="Arial",
                 bold=True
@@ -312,19 +447,19 @@ class GameOverView(arcade.View):
             arcade.draw_text(
                 f"High Score: {self.highscore}",
                 center_x,
-                center_y - 30,
-                arcade.color.GRAY,
-                font_size=20,
+                center_y + 5,
+                arcade.color.LIGHT_GRAY,
+                font_size=22,
                 anchor_x="center",
                 font_name="Arial"
             )
         
        
-        # Draw buttons
-        button_start_y = center_y - 100
+        # Draw buttons with better spacing
+        button_start_y = center_y - 60
         button_height = 50
-        button_width = 300
-        button_spacing = 70
+        button_width = 280
+        button_spacing = 65
         
         for i, button in enumerate(self.buttons):
             button_y = button_start_y - (i * button_spacing)
@@ -412,6 +547,318 @@ class GameOverView(arcade.View):
     def on_update(self, delta_time):
         """Update animation timer"""
         self.animation_timer += delta_time
+
+
+class ItemShopView(arcade.View):
+    """Item Shop screen"""
+    
+    def __init__(self):
+        super().__init__()
+        self.background_color = arcade.color.PURPLE
+        
+        # Shop items data
+        self.shop_items = [
+            {
+                "id": "normal_wario",
+                "name": "Normal Wario",
+                "price": 0,
+                "description": "Classic Wario appearance",
+                "sprite_path": "assets/images/sprites/wario/normal/SSWario.png",
+                "always_owned": True
+            },
+            {
+                "id": "shiny_wario", 
+                "name": "Shiny Wario Skin",
+                "price": 40,
+                "description": "Unlock the shiny appearance!",
+                "sprite_path": "assets/images/sprites/wario/shiny/SSWarioShiny.png",
+                "always_owned": False
+            }
+        ]
+        
+        # Create sprite lists for shop items
+        self.item_sprites = {}
+        self.sprite_lists = {}
+        
+        # Load sprites for each shop item
+        for item in self.shop_items:
+            try:
+                sprite = arcade.Sprite(item["sprite_path"], scale=1.5)
+                sprite_list = arcade.SpriteList()
+                sprite_list.append(sprite)
+                self.item_sprites[item["id"]] = sprite
+                self.sprite_lists[item["id"]] = sprite_list
+            except Exception as e:
+                print(f"Could not load {item['name']} sprite: {e}")
+                self.item_sprites[item["id"]] = None
+                self.sprite_lists[item["id"]] = arcade.SpriteList()
+        
+        # Load shop data from file
+        self.shop_data = load_shop_data()
+        self.item_purchased = "shiny_wario" in self.shop_data['purchased_items']
+        self.player_coins = self.shop_data['coins']
+        
+        # Animation variables
+        self.animation_timer = 0.0
+    
+    def draw_action_button(self, item, button_x, button_y, button_width, button_height, is_equipped):
+        """Draw action button for an item (Buy/Equip/Equipped)"""
+        equipped_skin = self.shop_data.get('equipped_skin', 'normal')
+        is_owned = item['always_owned'] or item['id'] in self.shop_data['purchased_items']
+        
+        if is_equipped:
+            button_color = arcade.color.GRAY
+            border_color = arcade.color.DARK_GRAY
+            button_text = "EQUIPPED"
+            text_color = arcade.color.WHITE
+        elif is_owned:
+            button_color = arcade.color.BLUE
+            border_color = arcade.color.DARK_BLUE
+            button_text = "EQUIP"
+            text_color = arcade.color.WHITE
+        elif self.player_coins >= item["price"]:
+            button_color = arcade.color.GREEN
+            border_color = arcade.color.DARK_GREEN
+            button_text = "BUY"
+            text_color = arcade.color.WHITE
+        else:
+            button_color = arcade.color.RED
+            border_color = arcade.color.DARK_RED
+            button_text = "NEED COINS"
+            text_color = arcade.color.WHITE
+        
+        # Button background
+        arcade.draw_lrbt_rectangle_filled(
+            button_x, button_x + button_width,
+            button_y, button_y + button_height,
+            button_color
+        )
+        
+        # Button border
+        arcade.draw_lrbt_rectangle_outline(
+            button_x, button_x + button_width,
+            button_y, button_y + button_height,
+            border_color, 2
+        )
+        
+        # Button text
+        arcade.draw_text(
+            button_text,
+            button_x + button_width // 2,
+            button_y + button_height // 2 - 6,
+            text_color,
+            font_size=12,
+            anchor_x="center",
+            bold=True
+        )
+        
+    def on_draw(self):
+        """Draw the item shop screen"""
+        self.clear()
+        
+        # Get dynamic screen center
+        center_x = self.window.width // 2
+        center_y = self.window.height // 2
+        
+        # Draw title
+        arcade.draw_text(
+            "SKIN SHOP",
+            center_x,
+            self.window.height - 60,
+            arcade.color.GOLD,
+            font_size=50,
+            anchor_x="center"
+        )
+        
+        # Draw player coins
+        arcade.draw_text(
+            f"Coins: {self.player_coins}",
+            50,
+            self.window.height - 50,
+            arcade.color.YELLOW,
+            font_size=20,
+            bold=True
+        )
+        
+        # Draw current equipped skin
+        equipped_skin = self.shop_data.get('equipped_skin', 'normal')
+        arcade.draw_text(
+            f"Current: {'Shiny Wario' if equipped_skin == 'shiny' else 'Normal Wario'}",
+            self.window.width - 50,
+            self.window.height - 50,
+            arcade.color.CYAN,
+            font_size=20,
+            anchor_x="right",
+            bold=True
+        )
+        
+        # Draw both shop items side by side
+        item_width = 300
+        item_height = 350
+        spacing = 50
+        start_x = center_x - (2 * item_width + spacing) // 2
+        
+        for i, item in enumerate(self.shop_items):
+            item_x = start_x + i * (item_width + spacing)
+            item_y = center_y - item_height // 2
+            
+            # Item background - highlight if equipped
+            is_equipped = (equipped_skin == 'normal' and item['id'] == 'normal_wario') or (equipped_skin == 'shiny' and item['id'] == 'shiny_wario')
+            bg_color = arcade.color.DARK_GREEN if is_equipped else arcade.color.DARK_BLUE
+            border_color = arcade.color.GREEN if is_equipped else arcade.color.GOLD
+            
+            arcade.draw_lrbt_rectangle_filled(
+                item_x, item_x + item_width,
+                item_y, item_y + item_height,
+                bg_color
+            )
+            
+            arcade.draw_lrbt_rectangle_outline(
+                item_x, item_x + item_width,
+                item_y, item_y + item_height,
+                border_color, 3 if is_equipped else 2
+            )
+            
+            # Position and animate sprite
+            sprite = self.item_sprites.get(item['id'])
+            if sprite:
+                # Floating animation
+                float_offset = math.sin(self.animation_timer * 2 + i) * 10
+                
+                # Scale animation
+                scale_base = 1.5
+                scale_variation = math.sin(self.animation_timer * 3 + i) * 0.1
+                sprite.scale = scale_base + scale_variation
+                
+                # Position sprite
+                sprite.center_x = item_x + item_width // 2
+                sprite.center_y = item_y + item_height - 100 + float_offset
+                
+                self.sprite_lists[item['id']].draw()
+            
+            # Item name
+            arcade.draw_text(
+                item["name"],
+                item_x + item_width // 2,
+                item_y + 120,
+                arcade.color.GOLD,
+                font_size=20,
+                anchor_x="center",
+                bold=True
+            )
+            
+            # Item description
+            arcade.draw_text(
+                item["description"],
+                item_x + item_width // 2,
+                item_y + 90,
+                arcade.color.WHITE,
+                font_size=14,
+                anchor_x="center"
+            )
+            
+            # Price (only show if not owned and not free)
+            is_owned = item['always_owned'] or item['id'] in self.shop_data['purchased_items']
+            if item["price"] > 0 and not is_owned:
+                arcade.draw_text(
+                    f"Price: {item['price']} coins",
+                    item_x + item_width // 2,
+                    item_y + 60,
+                    arcade.color.YELLOW,
+                    font_size=16,
+                    anchor_x="center",
+                    bold=True
+                )
+            
+            # Action button
+            button_width = 120
+            button_height = 35
+            button_x = item_x + (item_width - button_width) // 2
+            button_y = item_y + 15
+            
+            self.draw_action_button(item, button_x, button_y, button_width, button_height, is_equipped)
+
+        
+        # Back instruction
+        arcade.draw_text(
+            "Press ESC to go back",
+            center_x,
+            50,
+            arcade.color.LIGHT_GRAY,
+            font_size=18,
+            anchor_x="center"
+        )
+    
+    def on_update(self, delta_time):
+        """Update animation timer"""
+        self.animation_timer += delta_time
+        
+    def on_mouse_press(self, x, y, button, modifiers):
+        """Handle mouse clicks on item shop"""
+        center_x = self.window.width // 2
+        center_y = self.window.height // 2
+        
+        # Check clicks on item buttons
+        item_width = 300
+        item_height = 350
+        spacing = 50
+        start_x = center_x - (2 * item_width + spacing) // 2
+        
+        for i, item in enumerate(self.shop_items):
+            item_x = start_x + i * (item_width + spacing)
+            item_y = center_y - item_height // 2
+            
+            # Button coordinates
+            button_width = 120
+            button_height = 35
+            button_x = item_x + (item_width - button_width) // 2
+            button_y = item_y + 15
+            
+            # Check if clicking on this item's button
+            if (button_x <= x <= button_x + button_width and
+                button_y <= y <= button_y + button_height):
+                
+                equipped_skin = self.shop_data.get('equipped_skin', 'normal')
+                is_owned = item['always_owned'] or item['id'] in self.shop_data['purchased_items']
+                is_equipped = (equipped_skin == 'normal' and item['id'] == 'normal_wario') or (equipped_skin == 'shiny' and item['id'] == 'shiny_wario')
+                
+                if is_equipped:
+                    print(f"{item['name']} is already equipped!")
+                elif is_owned:
+                    # Equip the skin
+                    new_skin = 'shiny' if item['id'] == 'shiny_wario' else 'normal'
+                    self.shop_data['equipped_skin'] = new_skin
+                    save_shop_data(self.shop_data)
+                    print(f"{item['name']} equipped!")
+                elif self.player_coins >= item["price"]:
+                    # Purchase and equip
+                    self.player_coins -= item["price"]
+                    self.shop_data['coins'] = self.player_coins
+                    self.shop_data['purchased_items'].append(item['id'])
+                    
+                    # Auto-equip the new skin
+                    new_skin = 'shiny' if item['id'] == 'shiny_wario' else 'normal'
+                    self.shop_data['equipped_skin'] = new_skin
+                    
+                    save_shop_data(self.shop_data)
+                    print(f"{item['name']} purchased and equipped! Remaining coins: {self.player_coins}")
+                else:
+                    print("Not enough coins!")
+                return
+        
+        # If clicked elsewhere, return to start screen
+        start_view = StartView()
+        self.window.show_view(start_view)
+        
+    def on_key_press(self, key, modifiers):
+        """Handle key presses"""
+        if key == arcade.key.ESCAPE or key == arcade.key.ENTER:
+            # Return to start screen
+            start_view = StartView()
+            self.window.show_view(start_view)
+        elif key == arcade.key.F11:
+            # Toggle fullscreen
+            self.window.set_fullscreen(not self.window.fullscreen)
 
 
 class GameView(arcade.View):
@@ -510,14 +957,14 @@ class GameView(arcade.View):
 
         # Load collection sound
         try:
-            self.collect_sound = arcade.load_sound("sound/eating.mp3")
+            self.collect_sound = arcade.load_sound("assets/sounds/eating.mp3")
         except:
             # Fallback if sound doesn't exist
             self.collect_sound = None
             
         # Load die sound
         try:
-            self.die_sound = arcade.load_sound("sound/die.mp3")
+            self.die_sound = arcade.load_sound("assets/sounds/die.mp3")
         except:
             # Fallback if sound doesn't exist
             self.die_sound = None
@@ -529,12 +976,26 @@ class GameView(arcade.View):
         self.background_timer = 0.0
 
     def setup_player_animations(self):
+        # Load shop data to check equipped skin
+        shop_data = load_shop_data()
+        equipped_skin = shop_data.get('equipped_skin', 'normal')
+        
+        # Choose sprite paths based on equipped skin
+        if equipped_skin == 'shiny':
+            idle_sprite_path = "assets/images/sprites/wario/shiny/SSWarioShiny.png"
+            spritesheet_right_path = "assets/images/sprites/wario/shiny/WarioSpritesAllShiny.png"
+            spritesheet_left_path = "assets/images/sprites/wario/shiny/WarioSpritesAllShinyBackwards.png"
+        else:
+            idle_sprite_path = "assets/images/sprites/wario/normal/SSWario.png"
+            spritesheet_right_path = "assets/images/sprites/wario/normal/WarioSpritesAll.png"
+            spritesheet_left_path = "assets/images/sprites/wario/normal/WarioSpritesAllBackwards.png"
+        
         # Load idle PNG for no key pressed
-        self.idle_texture_still = arcade.load_texture("WarioSprites/SSWario.png")
+        self.idle_texture_still = arcade.load_texture(idle_sprite_path)
         """Setup Wario animations from spritesheet"""
         # Load both spritesheets
-        self.spritesheet_right = arcade.load_texture("WarioSprites/WarioSpritesAll.png")
-        self.spritesheet_left = arcade.load_texture("WarioSprites/WarioSpritesAllBackwards.png")
+        self.spritesheet_right = arcade.load_texture(spritesheet_right_path)
+        self.spritesheet_left = arcade.load_texture(spritesheet_left_path)
 
         # Idle animations
         self.idle_texture_list_right = []
@@ -726,17 +1187,17 @@ class GameView(arcade.View):
         
         for i in range(num_printers):
             # Create a printer sprite scaled down to 32x32 pixels first
-            printer = arcade.Sprite("WarioSprites/printer.png")
+            printer = arcade.Sprite("assets/images/sprites/objects/printer.png")
             
-            # Step 1: Calculate base scale to make it 32x32 pixels (initial scale down)
-            target_size = 32
+            # Step 1: Calculate base scale to make it 64x64 pixels (larger base size)
+            target_size = 64  # Increased from 32 to 64 pixels
             if printer.texture.width > 0:  # Avoid division by zero
                 base_scale_factor = target_size / max(printer.texture.width, printer.texture.height)
             else:
-                base_scale_factor = 0.1  # Fallback scale
+                base_scale_factor = 0.2  # Fallback scale (increased from 0.1)
             
-            # Step 2: Apply random upscaling on top of the base scale
-            random_upscale = random.uniform(0.8, 3.0)  # Random scale multiplier between 0.8x and 3.0x
+            # Step 2: Apply random upscaling on top of the base scale (ensure minimum size)
+            random_upscale = random.uniform(1.0, 3.0)  # Changed from 0.8-3.0 to 1.0-3.0 (no scaling down)
             final_scale = base_scale_factor * random_upscale
             
             printer.scale = final_scale
@@ -791,18 +1252,21 @@ class GameView(arcade.View):
 
     def spawn_enemies(self):
         """Spawn enemies from left and right sides of screen"""
-        # Calculate number of enemies based on score (gradually increasing)
-        base_enemies = 2  # Start with minimum 2 enemies
+        # Calculate number of enemies based on score (original difficulty from start)
+        base_enemies = 2  # Start with minimum 2 enemies (original setting)
         score_bonus = self.score // 5  # +1 enemy for every 5 points
-        max_enemies = 8  # Cap at 8 enemies per spawn
+        max_enemies = 8  # Cap at 8 enemies per spawn (original setting)
         
         min_enemies = min(base_enemies + score_bonus, max_enemies)
         max_enemies_spawn = min(base_enemies + score_bonus + 2, max_enemies)
         
         num_enemies = random.randint(min_enemies, max_enemies_spawn)
         
+        # Use original speed settings (no gradual increase)
+        speed_multiplier = 1.0  # Original speed from the start
+        
         for i in range(num_enemies):
-            # Random scale for enemy size variety
+            # Random scale for enemy size variety (original settings)
             enemy_scale = random.uniform(1.0, 2.0)
             
             # Randomly choose to spawn from left or right
@@ -810,11 +1274,11 @@ class GameView(arcade.View):
             
             if spawn_from_left:
                 # Spawn from left side, moving right
-                enemy = Enemy(scale=enemy_scale, direction=1, window_width=self.window.width)
+                enemy = Enemy(scale=enemy_scale, direction=1, window_width=self.window.width, speed_multiplier=speed_multiplier)
                 enemy.center_x = -30  # Start off left edge
             else:
                 # Spawn from right side, moving left
-                enemy = Enemy(scale=enemy_scale, direction=-1, window_width=self.window.width)
+                enemy = Enemy(scale=enemy_scale, direction=-1, window_width=self.window.width, speed_multiplier=speed_multiplier)
                 enemy.center_x = self.window.width + 30  # Start off right edge
             
             # Random Y position (middle area of screen to avoid printers)
@@ -908,19 +1372,18 @@ class GameView(arcade.View):
                 self.spawn_printers()
                 self.printer_spawn_timer = 0.0  # Reset timer
 
-        # Enemy spawning system - start spawning after score 3
-        if self.score >= 3:
-            self.enemy_spawn_timer += delta_time
-            
-            # Calculate dynamic spawn interval (faster with higher score)
-            base_interval = 3.0  # Base 3 seconds (reduced from 4)
-            interval_decrease = self.score * 0.08  # 0.08 seconds less per point (increased from 0.05)
-            min_interval = 1.5  # Minimum 1.5 seconds between spawns (reduced from 2)
-            current_interval = max(base_interval - interval_decrease, min_interval)
-            
-            if self.enemy_spawn_timer >= current_interval:
-                self.spawn_enemies()
-                self.enemy_spawn_timer = 0.0  # Reset timer
+        # Enemy spawning system - start from the beginning with original difficulty
+        self.enemy_spawn_timer += delta_time
+        
+        # Calculate dynamic spawn interval (faster with higher score) - original settings
+        base_interval = 3.0  # Base 3 seconds (original difficulty)
+        interval_decrease = self.score * 0.08  # 0.08 seconds less per point
+        min_interval = 1.5  # Minimum 1.5 seconds between spawns
+        current_interval = max(base_interval - interval_decrease, min_interval)
+        
+        if self.enemy_spawn_timer >= current_interval:
+            self.spawn_enemies()
+            self.enemy_spawn_timer = 0.0  # Reset timer
 
         # Call update on all sprites (The sprites don't do much in this
         # example though.)
@@ -945,6 +1408,12 @@ class GameView(arcade.View):
                 coin.changed = True
                 coin.collection_timer = 0.0  # Initialize collection timer
                 self.score += 1
+                
+                # Award coins for collecting burgers (1 coin per 5 burgers)
+                if self.score % 5 == 0:
+                    shop_data = load_shop_data()
+                    shop_data['coins'] += 1
+                    save_shop_data(shop_data)
                 
                 # Make Wario fatter with each burger collected
                 current_scale = self.player_sprite.scale
