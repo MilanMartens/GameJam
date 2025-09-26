@@ -132,8 +132,14 @@ class Enemy(arcade.Sprite):
         self.speed = random.uniform(3.0, 6.0)  # Random speed between 3-6 (increased from 2-4)
         self.change_x = self.speed * self.direction
         
+        # Set rotation speed (random spin speed)
+        self.rotation_speed = random.uniform(-5.0, 5.0)  # Random rotation between -5 and 5 degrees per frame
+        
     def update(self, delta_time=1/60):
         super().update()
+        
+        # Rotate the food sprite
+        self.angle += self.rotation_speed
         
         # Remove enemy when it goes off screen
         if self.direction > 0 and self.left > 1300:  # Moving right, off right edge
