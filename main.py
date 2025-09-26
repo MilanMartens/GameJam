@@ -154,7 +154,7 @@ class StartView(arcade.View):
     
     def __init__(self):
         super().__init__()
-        self.background_color = (0, 16, 56)  # #001038
+        self.background_color = (0, 13, 55)  # #000D37
         
         # Create sprite list for titlescreen
         self.titlescreen_list = arcade.SpriteList()
@@ -477,7 +477,7 @@ class ItemShopView(arcade.View):
         # Load Shiny Wario sprite
         self.shiny_wario_sprite = None
         try:
-            self.shiny_wario_sprite = arcade.Sprite("ShinyWarioSprites/WarioSpritesAllShiny.png", scale=2.0)
+            self.shiny_wario_sprite = arcade.Sprite("ShinyWarioSprites/SSWarioShiny.png", scale=2.0)
             self.sprite_list.append(self.shiny_wario_sprite)
         except Exception as e:
             print(f"Could not load Shiny Wario sprite: {e}")
@@ -485,9 +485,16 @@ class ItemShopView(arcade.View):
         # Shop item data
         self.shop_item = {
             "name": "Shiny Wario Skin",
-            "price": 10,
+            "price": 40,
             "description": "Unlock the shiny appearance!"
         }
+        
+        # Purchase state
+        self.item_purchased = False
+        self.player_coins = 50  # Give player some coins for testing
+        
+        # Animation variables
+        self.animation_timer = 0.0
         
     def on_draw(self):
         """Draw the item shop screen"""
@@ -505,6 +512,16 @@ class ItemShopView(arcade.View):
             arcade.color.GOLD,
             font_size=50,
             anchor_x="center"
+        )
+        
+        # Draw player coins
+        arcade.draw_text(
+            f"Coins: {self.player_coins}",
+            50,
+            self.window.height - 50,
+            arcade.color.YELLOW,
+            font_size=20,
+            bold=True
         )
         
         # Draw shop item box
@@ -527,19 +544,36 @@ class ItemShopView(arcade.View):
             arcade.color.GOLD, 3
         )
         
-        # Position and draw Shiny Wario sprite
+        # Position and animate Shiny Wario sprite
         if self.shiny_wario_sprite:
+            # Floating animation - move up and down
+            float_offset = math.sin(self.animation_timer * 2) * 15
+            
+            # Scale animation - pulse effect
+            scale_base = 2.0
+            scale_variation = math.sin(self.animation_timer * 3) * 0.2
+            self.shiny_wario_sprite.scale = scale_base + scale_variation
+            
+            # Rotation animation - slight wobble
+            rotation_offset = math.sin(self.animation_timer * 1.5) * 5
+            self.shiny_wario_sprite.angle = rotation_offset
+            
+            # Position with floating effect
             self.shiny_wario_sprite.center_x = center_x
-            self.shiny_wario_sprite.center_y = center_y + 50
+            self.shiny_wario_sprite.center_y = center_y + 50 + float_offset
+            
             self.sprite_list.draw()
         else:
-            # Fallback if sprite couldn't be loaded
-            arcade.draw_circle_filled(center_x, center_y + 50, 40, arcade.color.GOLD)
-            arcade.draw_circle_outline(center_x, center_y + 50, 40, arcade.color.ORANGE, 3)
+            # Animated fallback if sprite couldn't be loaded
+            float_offset = math.sin(self.animation_timer * 2) * 10
+            pulse_size = 40 + math.sin(self.animation_timer * 3) * 5
+            
+            arcade.draw_circle_filled(center_x, center_y + 50 + float_offset, pulse_size, arcade.color.GOLD)
+            arcade.draw_circle_outline(center_x, center_y + 50 + float_offset, pulse_size, arcade.color.ORANGE, 3)
             arcade.draw_text(
                 "SHINY",
                 center_x,
-                center_y + 50,
+                center_y + 50 + float_offset,
                 arcade.color.BLACK,
                 font_size=14,
                 anchor_x="center",
@@ -569,7 +603,7 @@ class ItemShopView(arcade.View):
         
         # Item price
         arcade.draw_text(
-            f"Price: {self.shop_item['price']} euro",
+            f"Price: {self.shop_item['price']} coins",
             center_x,
             center_y - 110,
             arcade.color.YELLOW,
@@ -578,7 +612,59 @@ class ItemShopView(arcade.View):
             bold=True
         )
         
-       
+        # Buy button
+        button_width = 200
+        button_height = 50
+        button_x = center_x - button_width // 2
+        button_y = center_y - 180
+        
+        # Determine button appearance based on purchase state and affordability
+        if self.item_purchased:
+            button_color = arcade.color.GRAY
+            border_color = arcade.color.DARK_GRAY
+            button_text = "PURCHASED"
+            text_color = arcade.color.WHITE
+        elif self.player_coins >= self.shop_item["price"]:
+            button_color = arcade.color.GREEN
+            border_color = arcade.color.DARK_GREEN
+            button_text = "BUY NOW"
+            text_color = arcade.color.WHITE
+        else:
+            button_color = arcade.color.RED
+            border_color = arcade.color.DARK_RED
+            button_text = "NOT ENOUGH COINS"
+            text_color = arcade.color.WHITE
+        
+        # Button background
+        arcade.draw_lrbt_rectangle_filled(
+            button_x,
+            button_x + button_width,
+            button_y,
+            button_y + button_height,
+            button_color
+        )
+        
+        # Button border
+        arcade.draw_lrbt_rectangle_outline(
+            button_x,
+            button_x + button_width,
+            button_y,
+            button_y + button_height,
+            border_color,
+            3
+        )
+        
+        # Button text
+        arcade.draw_text(
+            button_text,
+            center_x,
+            button_y + button_height // 2 - 8,
+            text_color,
+            font_size=16 if button_text == "NOT ENOUGH COINS" else 20,
+            anchor_x="center",
+            bold=True
+        )
+        
         # Back instruction
         arcade.draw_text(
             "Press ESC to go back",
@@ -588,11 +674,39 @@ class ItemShopView(arcade.View):
             font_size=18,
             anchor_x="center"
         )
+    
+    def on_update(self, delta_time):
+        """Update animation timer"""
+        self.animation_timer += delta_time
         
     def on_mouse_press(self, x, y, button, modifiers):
-        """Return to start screen when clicking anywhere"""
-        start_view = StartView()
-        self.window.show_view(start_view)
+        """Handle mouse clicks on item shop"""
+        center_x = self.window.width // 2
+        center_y = self.window.height // 2
+        
+        # Buy button coordinates
+        button_width = 200
+        button_height = 50
+        button_x = center_x - button_width // 2
+        button_y = center_y - 180
+        
+        # Check if clicking on buy button
+        if (button_x <= x <= button_x + button_width and
+            button_y <= y <= button_y + button_height):
+            # Handle purchase
+            if not self.item_purchased and self.player_coins >= self.shop_item["price"]:
+                # Deduct coins and mark as purchased
+                self.player_coins -= self.shop_item["price"]
+                self.item_purchased = True
+                print(f"Item purchased! Remaining coins: {self.player_coins}")
+            elif self.item_purchased:
+                print("Item already purchased!")
+            else:
+                print("Not enough coins!")
+        else:
+            # Return to start screen when clicking elsewhere
+            start_view = StartView()
+            self.window.show_view(start_view)
         
     def on_key_press(self, key, modifiers):
         """Handle key presses"""
