@@ -759,8 +759,15 @@ class GameView(arcade.View):
 
     def spawn_enemies(self):
         """Spawn enemies from left and right sides of screen"""
-        # Spawn 2-4 enemies randomly (increased from 1-2)
-        num_enemies = random.randint(2, 4)
+        # Calculate number of enemies based on score (gradually increasing)
+        base_enemies = 2  # Start with minimum 2 enemies
+        score_bonus = self.score // 5  # +1 enemy for every 5 points
+        max_enemies = 8  # Cap at 8 enemies per spawn
+        
+        min_enemies = min(base_enemies + score_bonus, max_enemies)
+        max_enemies_spawn = min(base_enemies + score_bonus + 2, max_enemies)
+        
+        num_enemies = random.randint(min_enemies, max_enemies_spawn)
         
         for i in range(num_enemies):
             # Random scale for enemy size variety
