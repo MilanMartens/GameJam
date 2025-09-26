@@ -110,8 +110,23 @@ class Enemy(arcade.Sprite):
         super().__init__(scale=scale)
         self.direction = direction  # 1 for right, -1 for left
         
-        # Load enemy texture
-        self.texture = arcade.load_texture("WarioSprites/Run1Wario.png")
+        # Load random food texture from food folder
+        food_files = [
+            "01_Cherry_Red.png", "02_Cherry_Black.png", "03_Cranberry.png",
+            "04_Cucumber.png", "05_CustardApple.png", "06_Plum.png", 
+            "07_Dragonfruit.png", "10_Grapes_Black.png", "11_Grapes_Green.png",
+            "12_Grapefruit.png", "13_Guava.png", "14_Kiwi.png", "15_Lemon.png",
+            "16_Apple.png", "19_Peach.png", "20_Passionfruit.png", "21_Apricot.png",
+            "22_Strawberry.png", "23_Watermelon.png", "24_Melon.png"
+        ]
+        
+        # Choose random food sprite
+        random_food = random.choice(food_files)
+        try:
+            self.texture = arcade.load_texture(f"food/{random_food}")
+        except:
+            # Fallback to Wario sprite if food sprite fails to load
+            self.texture = arcade.load_texture("WarioSprites/Run1Wario.png")
         
         # Set horizontal speed
         self.speed = random.uniform(3.0, 6.0)  # Random speed between 3-6 (increased from 2-4)
