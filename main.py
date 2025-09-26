@@ -11,7 +11,7 @@ WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 WINDOW_TITLE = "Sprite Change Coins"
 
-HIGHSCORE_FILE = "highscore.json"
+HIGHSCORE_FILE = "data/saves/highscore.json"
 
 def load_highscore():
     """Load highscore from file, return 0 if file doesn't exist"""
@@ -34,7 +34,7 @@ def save_highscore(score):
         pass  # Silently fail if we can't save
 
 # Shop data file
-SHOP_DATA_FILE = "shop_data.json"
+SHOP_DATA_FILE = "data/saves/shop_data.json"
 
 def load_shop_data():
     """Load shop data from file"""
@@ -93,7 +93,7 @@ class Collectable(arcade.Sprite):
     def setup_burger_animation(self):
         """Setup burger texture"""
         # Load the single burger image
-        burger_texture = arcade.load_texture("WarioSprites/burger.png")
+        burger_texture = arcade.load_texture("assets/images/sprites/wario/normal/burger.png")
         
         # Create animation frames list with just one frame
         self.animation_frames = [burger_texture]
@@ -155,10 +155,10 @@ class Enemy(arcade.Sprite):
         # Choose random food sprite
         random_food = random.choice(food_files)
         try:
-            self.texture = arcade.load_texture(f"food/{random_food}")
+            self.texture = arcade.load_texture(f"assets/images/sprites/food/{random_food}")
         except:
             # Fallback to Wario sprite if food sprite fails to load
-            self.texture = arcade.load_texture("WarioSprites/Run1Wario.png")
+            self.texture = arcade.load_texture("assets/images/sprites/wario/normal/Run1Wario.png")
         
         # Set horizontal speed (original settings)
         self.speed = random.uniform(3.0, 6.0) * self.speed_multiplier  # Original speed range
@@ -192,7 +192,7 @@ class StartView(arcade.View):
         
         # Load the titlescreen image
         try:
-            self.titlescreen_sprite = arcade.Sprite("WarioSprites/titlescreen.png")
+            self.titlescreen_sprite = arcade.Sprite("assets/images/titlescreen/titlescreen.png")
             self.titlescreen_list.append(self.titlescreen_sprite)
         except:
             # If loading fails, create empty list
@@ -563,7 +563,7 @@ class ItemShopView(arcade.View):
                 "name": "Normal Wario",
                 "price": 0,
                 "description": "Classic Wario appearance",
-                "sprite_path": "WarioSprites/SSWario.png",
+                "sprite_path": "assets/images/sprites/wario/normal/SSWario.png",
                 "always_owned": True
             },
             {
@@ -571,7 +571,7 @@ class ItemShopView(arcade.View):
                 "name": "Shiny Wario Skin",
                 "price": 40,
                 "description": "Unlock the shiny appearance!",
-                "sprite_path": "ShinyWarioSprites/SSWarioShiny.png",
+                "sprite_path": "assets/images/sprites/wario/shiny/SSWarioShiny.png",
                 "always_owned": False
             }
         ]
@@ -957,14 +957,14 @@ class GameView(arcade.View):
 
         # Load collection sound
         try:
-            self.collect_sound = arcade.load_sound("sound/eating.mp3")
+            self.collect_sound = arcade.load_sound("assets/sounds/eating.mp3")
         except:
             # Fallback if sound doesn't exist
             self.collect_sound = None
             
         # Load die sound
         try:
-            self.die_sound = arcade.load_sound("sound/die.mp3")
+            self.die_sound = arcade.load_sound("assets/sounds/die.mp3")
         except:
             # Fallback if sound doesn't exist
             self.die_sound = None
@@ -982,13 +982,13 @@ class GameView(arcade.View):
         
         # Choose sprite paths based on equipped skin
         if equipped_skin == 'shiny':
-            idle_sprite_path = "ShinyWarioSprites/SSWarioShiny.png"
-            spritesheet_right_path = "ShinyWarioSprites/WarioSpritesAllShiny.png"
-            spritesheet_left_path = "ShinyWarioSprites/WarioSpritesAllShinyBackwards.png"
+            idle_sprite_path = "assets/images/sprites/wario/shiny/SSWarioShiny.png"
+            spritesheet_right_path = "assets/images/sprites/wario/shiny/WarioSpritesAllShiny.png"
+            spritesheet_left_path = "assets/images/sprites/wario/shiny/WarioSpritesAllShinyBackwards.png"
         else:
-            idle_sprite_path = "WarioSprites/SSWario.png"
-            spritesheet_right_path = "WarioSprites/WarioSpritesAll.png"
-            spritesheet_left_path = "WarioSprites/WarioSpritesAllBackwards.png"
+            idle_sprite_path = "assets/images/sprites/wario/normal/SSWario.png"
+            spritesheet_right_path = "assets/images/sprites/wario/normal/WarioSpritesAll.png"
+            spritesheet_left_path = "assets/images/sprites/wario/normal/WarioSpritesAllBackwards.png"
         
         # Load idle PNG for no key pressed
         self.idle_texture_still = arcade.load_texture(idle_sprite_path)
@@ -1187,17 +1187,17 @@ class GameView(arcade.View):
         
         for i in range(num_printers):
             # Create a printer sprite scaled down to 32x32 pixels first
-            printer = arcade.Sprite("WarioSprites/printer.png")
+            printer = arcade.Sprite("assets/images/sprites/objects/printer.png")
             
-            # Step 1: Calculate base scale to make it 32x32 pixels (initial scale down)
-            target_size = 32
+            # Step 1: Calculate base scale to make it 64x64 pixels (larger base size)
+            target_size = 64  # Increased from 32 to 64 pixels
             if printer.texture.width > 0:  # Avoid division by zero
                 base_scale_factor = target_size / max(printer.texture.width, printer.texture.height)
             else:
-                base_scale_factor = 0.1  # Fallback scale
+                base_scale_factor = 0.2  # Fallback scale (increased from 0.1)
             
-            # Step 2: Apply random upscaling on top of the base scale
-            random_upscale = random.uniform(0.8, 3.0)  # Random scale multiplier between 0.8x and 3.0x
+            # Step 2: Apply random upscaling on top of the base scale (ensure minimum size)
+            random_upscale = random.uniform(1.0, 3.0)  # Changed from 0.8-3.0 to 1.0-3.0 (no scaling down)
             final_scale = base_scale_factor * random_upscale
             
             printer.scale = final_scale
@@ -1447,40 +1447,16 @@ class GameView(arcade.View):
             game_over_view = GameOverView(self.score)
             self.window.show_view(game_over_view)
             
-        # Check for collision with enemies
+        # Check for collision with enemies (game over)
         enemy_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.enemy_list)
         if enemy_hit_list:
-            # If player has score less than 5, game over
-            if self.score < 5:
-                # Play die sound
-                if self.die_sound:
-                    arcade.play_sound(self.die_sound)
-                
-                # Player hit an enemy with low score - game over!
-                game_over_view = GameOverView(self.score)
-                self.window.show_view(game_over_view)
-            else:
-                # Remove the enemy that hit the player
-                for enemy in enemy_hit_list:
-                    enemy.remove_from_sprite_lists()
-                
-                # Lose score points and scale down Wario (continue playing)
-                self.score = max(0, self.score - 1)  # Lose 1 score point, don't go below 0
-                
-                # Make Wario smaller (reverse of the growth from collecting burgers)
-                current_scale = self.player_sprite.scale
-                if isinstance(current_scale, tuple):
-                    # If scale is a tuple, decrease both x and y scale
-                    new_scale_x = max(1.5, current_scale[0] - 0.2)  # Don't go below minimum size
-                    new_scale_y = max(1.5, current_scale[1] - 0.2)
-                    self.player_sprite.scale = (new_scale_x, new_scale_y)
-                else:
-                    # If scale is a float, subtract from it
-                    self.player_sprite.scale = max(1.5, current_scale - 0.2)  # Don't go below minimum size
-                
-                # Play die sound as feedback
-                if self.die_sound:
-                    arcade.play_sound(self.die_sound)
+            # Play die sound
+            if self.die_sound:
+                arcade.play_sound(self.die_sound)
+            
+            # Player hit an enemy - game over!
+            game_over_view = GameOverView(self.score)
+            self.window.show_view(game_over_view)
 
 
 def main():
