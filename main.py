@@ -136,10 +136,11 @@ class Collectable(arcade.Sprite):
 class Enemy(arcade.Sprite):
     """Enemy sprite that moves horizontally across screen"""
     
-    def __init__(self, scale, direction, window_width=1280):
+    def __init__(self, scale, direction, window_width=1280, speed_multiplier=1.0):
         super().__init__(scale=scale)
         self.direction = direction  # 1 for right, -1 for left
         self.window_width = window_width  # Store window width for boundary checking
+        self.speed_multiplier = speed_multiplier  # Difficulty scaling
         
         # Load random food texture from food folder
         food_files = [
@@ -159,8 +160,8 @@ class Enemy(arcade.Sprite):
             # Fallback to Wario sprite if food sprite fails to load
             self.texture = arcade.load_texture("WarioSprites/Run1Wario.png")
         
-        # Set horizontal speed
-        self.speed = random.uniform(3.0, 6.0)  # Random speed between 3-6 (increased from 2-4)
+        # Set horizontal speed (original settings)
+        self.speed = random.uniform(3.0, 6.0) * self.speed_multiplier  # Original speed range
         self.change_x = self.speed * self.direction
         
         # Set rotation speed (random spin speed)
@@ -1251,18 +1252,21 @@ class GameView(arcade.View):
 
     def spawn_enemies(self):
         """Spawn enemies from left and right sides of screen"""
-        # Calculate number of enemies based on score (gradually increasing)
-        base_enemies = 2  # Start with minimum 2 enemies
+        # Calculate number of enemies based on score (original difficulty from start)
+        base_enemies = 2  # Start with minimum 2 enemies (original setting)
         score_bonus = self.score // 5  # +1 enemy for every 5 points
-        max_enemies = 8  # Cap at 8 enemies per spawn
+        max_enemies = 8  # Cap at 8 enemies per spawn (original setting)
         
         min_enemies = min(base_enemies + score_bonus, max_enemies)
         max_enemies_spawn = min(base_enemies + score_bonus + 2, max_enemies)
         
         num_enemies = random.randint(min_enemies, max_enemies_spawn)
         
+        # Use original speed settings (no gradual increase)
+        speed_multiplier = 1.0  # Original speed from the start
+        
         for i in range(num_enemies):
-            # Random scale for enemy size variety
+            # Random scale for enemy size variety (original settings)
             enemy_scale = random.uniform(1.0, 2.0)
             
             # Randomly choose to spawn from left or right
@@ -1270,11 +1274,11 @@ class GameView(arcade.View):
             
             if spawn_from_left:
                 # Spawn from left side, moving right
-                enemy = Enemy(scale=enemy_scale, direction=1, window_width=self.window.width)
+                enemy = Enemy(scale=enemy_scale, direction=1, window_width=self.window.width, speed_multiplier=speed_multiplier)
                 enemy.center_x = -30  # Start off left edge
             else:
                 # Spawn from right side, moving left
-                enemy = Enemy(scale=enemy_scale, direction=-1, window_width=self.window.width)
+                enemy = Enemy(scale=enemy_scale, direction=-1, window_width=self.window.width, speed_multiplier=speed_multiplier)
                 enemy.center_x = self.window.width + 30  # Start off right edge
             
             # Random Y position (middle area of screen to avoid printers)
@@ -1368,19 +1372,18 @@ class GameView(arcade.View):
                 self.spawn_printers()
                 self.printer_spawn_timer = 0.0  # Reset timer
 
-        # Enemy spawning system - start spawning after score 3
-        if self.score >= 3:
-            self.enemy_spawn_timer += delta_time
-            
-            # Calculate dynamic spawn interval (faster with higher score)
-            base_interval = 3.0  # Base 3 seconds (reduced from 4)
-            interval_decrease = self.score * 0.08  # 0.08 seconds less per point (increased from 0.05)
-            min_interval = 1.5  # Minimum 1.5 seconds between spawns (reduced from 2)
-            current_interval = max(base_interval - interval_decrease, min_interval)
-            
-            if self.enemy_spawn_timer >= current_interval:
-                self.spawn_enemies()
-                self.enemy_spawn_timer = 0.0  # Reset timer
+        # Enemy spawning system - start from the beginning with original difficulty
+        self.enemy_spawn_timer += delta_time
+        
+        # Calculate dynamic spawn interval (faster with higher score) - original settings
+        base_interval = 3.0  # Base 3 seconds (original difficulty)
+        interval_decrease = self.score * 0.08  # 0.08 seconds less per point
+        min_interval = 1.5  # Minimum 1.5 seconds between spawns
+        current_interval = max(base_interval - interval_decrease, min_interval)
+        
+        if self.enemy_spawn_timer >= current_interval:
+            self.spawn_enemies()
+            self.enemy_spawn_timer = 0.0  # Reset timer
 
         # Call update on all sprites (The sprites don't do much in this
         # example though.)
@@ -1444,16 +1447,33 @@ class GameView(arcade.View):
             game_over_view = GameOverView(self.score)
             self.window.show_view(game_over_view)
             
-        # Check for collision with enemies (game over)
+        # Check for collision with enemies (lose coins and scale down)
         enemy_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.enemy_list)
         if enemy_hit_list:
-            # Play die sound
+            # Remove the enemy that hit the player
+            for enemy in enemy_hit_list:
+                enemy.remove_from_sprite_lists()
+            
+            # Lose coins and scale down Wario
+            shop_data = load_shop_data()
+            coins_lost = min(5, shop_data['coins'])  # Lose up to 5 coins
+            shop_data['coins'] = max(0, shop_data['coins'] - coins_lost)  # Don't go below 0
+            save_shop_data(shop_data)
+            
+            # Make Wario smaller (reverse of the growth from collecting burgers)
+            current_scale = self.player_sprite.scale
+            if isinstance(current_scale, tuple):
+                # If scale is a tuple, decrease both x and y scale
+                new_scale_x = max(1.5, current_scale[0] - 0.2)  # Don't go below minimum size
+                new_scale_y = max(1.5, current_scale[1] - 0.2)
+                self.player_sprite.scale = (new_scale_x, new_scale_y)
+            else:
+                # If scale is a float, subtract from it
+                self.player_sprite.scale = max(1.5, current_scale - 0.2)  # Don't go below minimum size
+            
+            # Play die sound as feedback
             if self.die_sound:
                 arcade.play_sound(self.die_sound)
-            
-            # Player hit an enemy - game over!
-            game_over_view = GameOverView(self.score)
-            self.window.show_view(game_over_view)
 
 
 def main():
