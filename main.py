@@ -741,6 +741,7 @@ class GameView(arcade.View):
                 coin.collection_timer = 0.0  # Initialize collection timer
                 self.score += 1
                 
+                
                 # Play collection sound
                 if self.collect_sound:
                     arcade.play_sound(self.collect_sound)
