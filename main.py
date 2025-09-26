@@ -196,18 +196,55 @@ class StartView(arcade.View):
             # Fallback if titlescreen can't be loaded - no text, just show blank screen
             pass
             
-        # Draw highscore in top-right corner
+        # Draw highscore in top-left corner
         if self.highscore > 0:
             arcade.draw_text(
                 f"High Score: {self.highscore}",
-                self.window.width - 20,
+                20,
                 self.window.height - 40,
                 arcade.color.YELLOW,
                 font_size=24,
-                anchor_x="right",
+                anchor_x="left",
                 font_name="Arial",
                 bold=True
             )
+            
+        # Draw Item Shop button in top-right corner
+        shop_button_width = 150
+        shop_button_height = 40
+        shop_button_x = self.window.width - shop_button_width - 20
+        shop_button_y = self.window.height - shop_button_height - 20
+        
+        # Button background
+        arcade.draw_lrbt_rectangle_filled(
+            shop_button_x,
+            shop_button_x + shop_button_width,
+            shop_button_y,
+            shop_button_y + shop_button_height,
+            arcade.color.DARK_BLUE
+        )
+        
+        # Button border
+        arcade.draw_lrbt_rectangle_outline(
+            shop_button_x,
+            shop_button_x + shop_button_width,
+            shop_button_y,
+            shop_button_y + shop_button_height,
+            arcade.color.LIGHT_BLUE,
+            3
+        )
+        
+        # Button text
+        arcade.draw_text(
+            "ITEM SHOP",
+            shop_button_x + shop_button_width // 2,
+            shop_button_y + shop_button_height // 2 - 8,
+            arcade.color.WHITE,
+            font_size=16,
+            anchor_x="center",
+            font_name="Arial",
+            bold=True
+        )
 
     
     def on_update(self, delta_time):
@@ -228,6 +265,19 @@ class StartView(arcade.View):
             # Quit the game
 
             self.window.close()
+    
+    def on_mouse_press(self, x, y, button, modifiers):
+        """Handle mouse clicks on start screen"""
+        # Simple check: if click is in the right half of the top part of screen, go to item shop
+        if x > self.window.width * 0.5 and y > self.window.height * 0.7:
+            # Open item shop
+            item_shop_view = ItemShopView()
+            self.window.show_view(item_shop_view)
+        else:
+            # Start game when clicking anywhere else on start screen
+            game_view = GameView()
+            game_view.setup()
+            self.window.show_view(game_view)
 
 
 class GameOverView(arcade.View):
@@ -412,6 +462,147 @@ class GameOverView(arcade.View):
     def on_update(self, delta_time):
         """Update animation timer"""
         self.animation_timer += delta_time
+
+
+class ItemShopView(arcade.View):
+    """Item Shop screen"""
+    
+    def __init__(self):
+        super().__init__()
+        self.background_color = arcade.color.PURPLE
+        
+        # Create sprite list for the shiny wario sprite
+        self.sprite_list = arcade.SpriteList()
+        
+        # Load Shiny Wario sprite
+        self.shiny_wario_sprite = None
+        try:
+            self.shiny_wario_sprite = arcade.Sprite("ShinyWarioSprites/WarioSpritesAllShiny.png", scale=2.0)
+            self.sprite_list.append(self.shiny_wario_sprite)
+        except Exception as e:
+            print(f"Could not load Shiny Wario sprite: {e}")
+        
+        # Shop item data
+        self.shop_item = {
+            "name": "Shiny Wario Skin",
+            "price": 10,
+            "description": "Unlock the shiny appearance!"
+        }
+        
+    def on_draw(self):
+        """Draw the item shop screen"""
+        self.clear()
+        
+        # Get dynamic screen center
+        center_x = self.window.width // 2
+        center_y = self.window.height // 2
+        
+        # Draw title
+        arcade.draw_text(
+            "ITEM SHOP",
+            center_x,
+            self.window.height - 60,
+            arcade.color.GOLD,
+            font_size=50,
+            anchor_x="center"
+        )
+        
+        # Draw shop item box
+        item_width = 400
+        item_height = 300
+        item_x = center_x - item_width // 2
+        item_y = center_y - item_height // 2
+        
+        # Item background
+        arcade.draw_lrbt_rectangle_filled(
+            item_x, item_x + item_width,
+            item_y, item_y + item_height,
+            arcade.color.DARK_BLUE
+        )
+        
+        # Item border
+        arcade.draw_lrbt_rectangle_outline(
+            item_x, item_x + item_width,
+            item_y, item_y + item_height,
+            arcade.color.GOLD, 3
+        )
+        
+        # Position and draw Shiny Wario sprite
+        if self.shiny_wario_sprite:
+            self.shiny_wario_sprite.center_x = center_x
+            self.shiny_wario_sprite.center_y = center_y + 50
+            self.sprite_list.draw()
+        else:
+            # Fallback if sprite couldn't be loaded
+            arcade.draw_circle_filled(center_x, center_y + 50, 40, arcade.color.GOLD)
+            arcade.draw_circle_outline(center_x, center_y + 50, 40, arcade.color.ORANGE, 3)
+            arcade.draw_text(
+                "SHINY",
+                center_x,
+                center_y + 50,
+                arcade.color.BLACK,
+                font_size=14,
+                anchor_x="center",
+                bold=True
+            )
+        
+        # Item name
+        arcade.draw_text(
+            self.shop_item["name"],
+            center_x,
+            center_y - 50,
+            arcade.color.GOLD,
+            font_size=24,
+            anchor_x="center",
+            bold=True
+        )
+        
+        # Item description
+        arcade.draw_text(
+            self.shop_item["description"],
+            center_x,
+            center_y - 80,
+            arcade.color.WHITE,
+            font_size=16,
+            anchor_x="center"
+        )
+        
+        # Item price
+        arcade.draw_text(
+            f"Price: {self.shop_item['price']} euro",
+            center_x,
+            center_y - 110,
+            arcade.color.YELLOW,
+            font_size=20,
+            anchor_x="center",
+            bold=True
+        )
+        
+       
+        # Back instruction
+        arcade.draw_text(
+            "Press ESC to go back",
+            center_x,
+            50,
+            arcade.color.LIGHT_GRAY,
+            font_size=18,
+            anchor_x="center"
+        )
+        
+    def on_mouse_press(self, x, y, button, modifiers):
+        """Return to start screen when clicking anywhere"""
+        start_view = StartView()
+        self.window.show_view(start_view)
+        
+    def on_key_press(self, key, modifiers):
+        """Handle key presses"""
+        if key == arcade.key.ESCAPE or key == arcade.key.ENTER:
+            # Return to start screen
+            start_view = StartView()
+            self.window.show_view(start_view)
+        elif key == arcade.key.F11:
+            # Toggle fullscreen
+            self.window.set_fullscreen(not self.window.fullscreen)
 
 
 class GameView(arcade.View):
