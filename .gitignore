@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Data & saves
+/data/saves/*.json
+
+# Arcade assets cache
+assets/cache/
+
+# Logs
+*.log
+
+# Misc
+*.bak
+*.tmp
+
+# Ignore compiled files
+*.so
+*.dll
+*.exe
+*.out
+
+# Ignore test results
+htmlcov/
+.coverage
+coverage.xml
+
+# Ignore notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore build artifacts
+dist/
+build/
+*.egg-info/
