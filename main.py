@@ -63,7 +63,7 @@ class Collectable(arcade.Sprite):
     def setup_burger_animation(self):
         """Setup burger texture"""
         # Load the single burger image
-        burger_texture = arcade.load_texture("WarioSprites/burger1.png")
+        burger_texture = arcade.load_texture("WarioSprites/burger.png")
         
         # Create animation frames list with just one frame
         self.animation_frames = [burger_texture]
