@@ -357,60 +357,86 @@ class GameOverView(arcade.View):
         """Draw the game over screen"""
         self.clear()
         
+        # Draw gradient background
+        for i in range(8):
+            t = i / 7
+            r = int(20 * (1 - t) + 60 * t)
+            g = int(0 * (1 - t) + 0 * t)
+            b = int(40 * (1 - t) + 80 * t)
+            
+            arcade.draw_lrbt_rectangle_filled(
+                0, self.window.width,
+                (self.window.height / 8) * i,
+                (self.window.height / 8) * (i + 1),
+                (r, g, b)
+            )
+        
         # Use actual window dimensions for proper centering in fullscreen
         center_x = self.window.width // 2
         center_y = self.window.height // 2
         
-        # Draw "GAME OVER" text
+        # Draw "GAME OVER" text with shadow effect
+        # Shadow
+        arcade.draw_text(
+            "GAME OVER",
+            center_x + 3,
+            center_y + 147,
+            arcade.color.BLACK,
+            font_size=60,
+            anchor_x="center",
+            font_name="Arial",
+            bold=True
+        )
+        # Main text
         arcade.draw_text(
             "GAME OVER",
             center_x,
-            center_y + 50,
+            center_y + 150,
             arcade.color.RED,
-            font_size=50,
+            font_size=60,
             anchor_x="center",
             font_name="Arial",
             bold=True
         )
         
-        # Draw final score
+        # Draw final score with better spacing
         score_color = arcade.color.YELLOW if self.is_new_highscore else arcade.color.WHITE
         arcade.draw_text(
             f"Final Score: {self.final_score}",
             center_x,
-            center_y + 10,
+            center_y + 80,
             score_color,
-            font_size=30,
+            font_size=32,
             anchor_x="center",
             font_name="Arial",
             bold=self.is_new_highscore
         )
         
-        # Draw coins earned
+        # Draw coins earned with better positioning
         coins_earned = self.final_score // 5
         if coins_earned > 0:
             arcade.draw_text(
                 f"Coins Earned: +{coins_earned}",
                 center_x,
-                center_y - 20,
-                arcade.color.GOLD,
-                font_size=20,
-                anchor_x="center",
-                font_name="Arial"
-            )
-        
-        # Draw NEW HIGHSCORE message if applicable
-        if self.is_new_highscore:
-            # Animated glow effect
-            glow_alpha = int(128 + 127 * math.sin(self.animation_timer * 8))
-            glow_color = (*arcade.color.GOLD[:3], glow_alpha)
-            
-            arcade.draw_text(
-                "NEW HIGH SCORE!",
-                center_x,
-                center_y - 30,
+                center_y + 40,
                 arcade.color.GOLD,
                 font_size=24,
+                anchor_x="center",
+                font_name="Arial",
+                bold=True
+            )
+        
+        # Draw NEW HIGHSCORE message or current highscore with better positioning
+        if self.is_new_highscore:
+            # Animated glow effect with pulsing text
+            pulse_scale = 1.0 + 0.1 * math.sin(self.animation_timer * 8)
+            
+            arcade.draw_text(
+                "🏆 NEW HIGH SCORE! 🏆",
+                center_x,
+                center_y + 5,
+                arcade.color.GOLD,
+                font_size=int(26 * pulse_scale),
                 anchor_x="center",
                 font_name="Arial",
                 bold=True
@@ -420,19 +446,19 @@ class GameOverView(arcade.View):
             arcade.draw_text(
                 f"High Score: {self.highscore}",
                 center_x,
-                center_y - 30,
-                arcade.color.GRAY,
-                font_size=20,
+                center_y + 5,
+                arcade.color.LIGHT_GRAY,
+                font_size=22,
                 anchor_x="center",
                 font_name="Arial"
             )
         
        
-        # Draw buttons
-        button_start_y = center_y - 100
+        # Draw buttons with better spacing
+        button_start_y = center_y - 60
         button_height = 50
-        button_width = 300
-        button_spacing = 70
+        button_width = 280
+        button_spacing = 65
         
         for i, button in enumerate(self.buttons):
             button_y = button_start_y - (i * button_spacing)
@@ -730,8 +756,9 @@ class ItemShopView(arcade.View):
                 anchor_x="center"
             )
             
-            # Price (if not free)
-            if item["price"] > 0:
+            # Price (only show if not owned and not free)
+            is_owned = item['always_owned'] or item['id'] in self.shop_data['purchased_items']
+            if item["price"] > 0 and not is_owned:
                 arcade.draw_text(
                     f"Price: {item['price']} coins",
                     item_x + item_width // 2,
