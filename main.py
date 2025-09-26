@@ -528,6 +528,8 @@ class GameView(arcade.View):
         self.background_timer = 0.0
 
     def setup_player_animations(self):
+        # Load idle PNG for no key pressed
+        self.idle_texture_still = arcade.load_texture("WarioSprites/SSWario.png")
         """Setup Wario animations from spritesheet"""
         # Load both spritesheets
         self.spritesheet_right = arcade.load_texture("WarioSprites/WarioSpritesAll.png")
@@ -577,7 +579,14 @@ class GameView(arcade.View):
             self.player_sprite.idle_texture_pair = self.idle_texture_list_right
             self.player_sprite.walk_textures = self.walking_texture_list_right
 
-        if is_moving:
+        # Check if no arrow key is pressed
+        no_key_pressed = not (self.up_pressed or self.down_pressed or self.left_pressed or self.right_pressed)
+
+        if no_key_pressed:
+            # Use still idle PNG
+            self.player_sprite.texture = self.idle_texture_still
+            self.player_sprite.cur_texture = 0
+        elif is_moving:
             # Use walking animation
             if self.animation_timer >= self.animation_speed:
                 self.player_sprite.cur_texture += 1
@@ -588,6 +597,7 @@ class GameView(arcade.View):
         else:
             # Use idle animation
             self.player_sprite.texture = self.player_sprite.idle_texture_pair[0]
+            self.player_sprite.cur_texture = 0
             self.player_sprite.cur_texture = 0
 
     def on_draw(self):
