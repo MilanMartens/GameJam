@@ -15,6 +15,7 @@ HIGHSCORE_FILE = "data/saves/highscore.json"
 
 def load_highscore():
     """Load highscore from file, return 0 if file doesn't exist"""
+    
     try:
         if os.path.exists(HIGHSCORE_FILE):
             with open(HIGHSCORE_FILE, 'r') as f:
