@@ -97,44 +97,7 @@ class StartView(arcade.View):
             # If loading fails, create empty list
             self.titlescreen_sprite = None
         
-        # Performance optimization: Pre-create Text objects for StartView
-        self.fallback_title = arcade.Text(
-            "WARIO'S BURGER RUSH",
-            0, 0,  # Position will be set dynamically
-            arcade.color.YELLOW,
-            font_size=50,
-            anchor_x="center",
-            font_name="Arial",
-            bold=True
-        )
-        
-        self.fallback_subtitle = arcade.Text(
-            "Collect burgers, avoid the falling boxes!",
-            0, 0,  # Position will be set dynamically
-            arcade.color.WHITE,
-            font_size=24,
-            anchor_x="center",
-            font_name="Arial"
-        )
-        
-        self.space_text = arcade.Text(
-            "Press SPACE to Start",
-            0, 0,  # Position will be set dynamically
-            arcade.color.WHITE,
-            font_size=30,
-            anchor_x="center",
-            font_name="Arial",
-            bold=True
-        )
-        
-        self.controls_text = arcade.Text(
-            "Controls: Arrow Keys to Move",
-            0, 0,  # Position will be set dynamically
-            arcade.color.LIGHT_GRAY,
-            font_size=18,
-            anchor_x="center",
-            font_name="Arial"
-        )
+
     
     def on_draw(self):
         """Draw the start screen"""
@@ -157,25 +120,8 @@ class StartView(arcade.View):
             # Draw the titlescreen
             self.titlescreen_list.draw()
         else:
-            # Fallback if titlescreen can't be loaded - using optimized Text objects
-            self.fallback_title.x = center_x
-            self.fallback_title.y = center_y + 100
-            self.fallback_title.draw()
-            
-            self.fallback_subtitle.x = center_x
-            self.fallback_subtitle.y = center_y + 40
-            self.fallback_subtitle.draw()
-        
-        # Always show start instruction and controls - using optimized Text objects
-        self.space_text.x = center_x
-        self.space_text.y = self.window.height * 0.15
-        self.space_text.font_size = int(30 * (self.window.height / 720))
-        self.space_text.draw()
-        
-        self.controls_text.x = center_x
-        self.controls_text.y = self.window.height * 0.08
-        self.controls_text.font_size = int(18 * (self.window.height / 720))
-        self.controls_text.draw()
+            # Fallback if titlescreen can't be loaded - no text, just show blank screen
+            pass
     
     def on_update(self, delta_time):
         """Update start screen"""
@@ -740,7 +686,6 @@ class GameView(arcade.View):
                 coin.changed = True
                 coin.collection_timer = 0.0  # Initialize collection timer
                 self.score += 1
-                
                 
                 # Play collection sound
                 if self.collect_sound:
