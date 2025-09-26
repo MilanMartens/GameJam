@@ -381,31 +381,32 @@ class GameView(arcade.View):
 
     def setup_player_animations(self):
         """Setup Wario animations from spritesheet"""
-        # Load the spritesheet
-        spritesheet = arcade.load_texture("WarioSprites/WarioSpritesAll.png")
-        
-        # Create idle animation (using just one frame for now)
-        idle_texture_list = []
-        # Extract frame from spritesheet - assuming it's the first frame
-        # You may need to adjust these coordinates based on the actual spritesheet layout
-        idle_frame = spritesheet.crop(0, 0, 32, 32)  # Adjust size as needed
-        idle_texture_list.append(idle_frame)
-        
-        # Create walking animation frames
-        walking_texture_list = []
-        # Extract multiple frames for walking animation
-        # Assuming frames are 32x32 pixels and arranged horizontally
-        for i in range(4):  # 4 walking frames
-            frame = spritesheet.crop(i * 32, 0, 32, 32)
-            walking_texture_list.append(frame)
-        
-        # Set up animations
-        self.player_sprite.idle_texture_pair = idle_texture_list
-        self.player_sprite.walk_textures = walking_texture_list
-        
-        # Set initial texture
-        self.player_sprite.texture = idle_texture_list[0]
-        
+        # Load both spritesheets
+        self.spritesheet_right = arcade.load_texture("WarioSprites/WarioSpritesAll.png")
+        self.spritesheet_left = arcade.load_texture("WarioSprites/WarioSpritesAllBackwards.png")
+
+        # Idle animations
+        self.idle_texture_list_right = []
+        self.idle_texture_list_left = []
+        idle_frame_right = self.spritesheet_right.crop(0, 0, 32, 32)
+        idle_frame_left = self.spritesheet_left.crop(0, 0, 32, 32)
+        self.idle_texture_list_right.append(idle_frame_right)
+        self.idle_texture_list_left.append(idle_frame_left)
+
+        # Walking animations
+        self.walking_texture_list_right = []
+        self.walking_texture_list_left = []
+        for i in range(4):
+            frame_right = self.spritesheet_right.crop(i * 32, 0, 32, 32)
+            frame_left = self.spritesheet_left.crop(i * 32, 0, 32, 32)
+            self.walking_texture_list_right.append(frame_right)
+            self.walking_texture_list_left.append(frame_left)
+
+        # Set up initial animations (default to right)
+        self.player_sprite.idle_texture_pair = self.idle_texture_list_right
+        self.player_sprite.walk_textures = self.walking_texture_list_right
+        self.player_sprite.texture = self.idle_texture_list_right[0]
+
         # Animation variables
         self.player_sprite.cur_texture = 0
         self.animation_timer = 0.0
@@ -417,7 +418,17 @@ class GameView(arcade.View):
         
         # Check if player is moving
         is_moving = (self.player_sprite.change_x != 0 or self.player_sprite.change_y != 0)
-        
+
+        # Determine direction (left or right)
+        if self.player_sprite.change_x < 0:
+            # Moving left
+            self.player_sprite.idle_texture_pair = self.idle_texture_list_left
+            self.player_sprite.walk_textures = self.walking_texture_list_left
+        else:
+            # Moving right or idle
+            self.player_sprite.idle_texture_pair = self.idle_texture_list_right
+            self.player_sprite.walk_textures = self.walking_texture_list_right
+
         if is_moving:
             # Use walking animation
             if self.animation_timer >= self.animation_speed:
@@ -509,8 +520,8 @@ class GameView(arcade.View):
             # Position the burger randomly, but not too close to the player
             attempts = 0
             while attempts < 50:  # Prevent infinite loop
-                burger.center_x = random.randrange(50, WINDOW_WIDTH - 50)
-                burger.center_y = random.randrange(50, WINDOW_HEIGHT - 50)
+                burger.center_x = random.randrange(50, int(self.window.width) - 50)
+                burger.center_y = random.randrange(50, int(self.window.height) - 50)
                 
                 # Check if burger is far enough from player
                 distance = ((burger.center_x - self.player_sprite.center_x) ** 2 + 
@@ -627,16 +638,16 @@ class GameView(arcade.View):
         # Update player animation
         self.update_player_animation(delta_time)
 
-        # Keep player on screen
+        # Keep player on screen using actual window size
         if self.player_sprite.left < 0:
             self.player_sprite.left = 0
-        elif self.player_sprite.right > WINDOW_WIDTH - 1:
-            self.player_sprite.right = WINDOW_WIDTH - 1
+        elif self.player_sprite.right > self.window.width - 1:
+            self.player_sprite.right = self.window.width - 1
 
         if self.player_sprite.bottom < 0:
             self.player_sprite.bottom = 0
-        elif self.player_sprite.top > WINDOW_HEIGHT - 1:
-            self.player_sprite.top = WINDOW_HEIGHT - 1
+        elif self.player_sprite.top > self.window.height - 1:
+            self.player_sprite.top = self.window.height - 1
 
         # Update coin spawn timer
         self.coin_spawn_timer += delta_time
@@ -711,10 +722,9 @@ class GameView(arcade.View):
 def main():
     """ Main function """
     # Create a window class. This is what actually shows up on screen
-    window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, fullscreen=False, resizable=True)
-    
+    window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, fullscreen=True, resizable=True)
     # Enable fullscreen toggle with F11
-    window.set_fullscreen(False)
+    window.set_fullscreen(True)
 
     # Show the start screen first
     start_view = StartView()
