@@ -637,8 +637,9 @@ class GameView(arcade.View):
         num_printers = random.randint(3, 5)
         
         for i in range(num_printers):
-            # Create a printer sprite using the custom printer texture
-            printer = arcade.Sprite("WarioSprites/printer.png", scale=1.5)
+            # Create a printer sprite using the custom printer texture with random size
+            random_scale = random.uniform(1.0, 2.5)  # Random scale between 1.0 and 2.5
+            printer = arcade.Sprite("WarioSprites/printer.png", scale=random_scale)
             
             # Find a random x position that doesn't overlap with existing printers
             # Use actual window width for proper positioning in fullscreen
@@ -650,7 +651,7 @@ class GameView(arcade.View):
                 # Check if this position is too close to any existing position
                 too_close = False
                 for used_x in used_positions:
-                    if abs(random_x - used_x) < 80:  # Minimum 80 pixels apart
+                    if abs(random_x - used_x) < 120:  # Minimum 120 pixels apart (increased for larger printers)
                         too_close = True
                         break
                 
