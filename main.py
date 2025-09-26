@@ -462,6 +462,13 @@ class GameView(arcade.View):
         except:
             # Fallback if sound doesn't exist
             self.collect_sound = None
+            
+        # Load die sound
+        try:
+            self.die_sound = arcade.load_sound("sound/die.mp3")
+        except:
+            # Fallback if sound doesn't exist
+            self.die_sound = None
 
         # Set the background color (we'll draw a custom background instead)
         self.background_color = arcade.color.DARK_GREEN
@@ -808,6 +815,10 @@ class GameView(arcade.View):
         # Check for collision with printers (game over)
         printer_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.printer_list)
         if printer_hit_list:
+            # Play die sound
+            if self.die_sound:
+                arcade.play_sound(self.die_sound)
+            
             # Player hit a printer - game over!
             game_over_view = GameOverView(self.score)
             self.window.show_view(game_over_view)
