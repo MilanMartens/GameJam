@@ -139,6 +139,7 @@ class StartView(arcade.View):
             self.window.set_fullscreen(not self.window.fullscreen)
         elif key == arcade.key.ESCAPE:
             # Quit the game
+            
             self.window.close()
 
 
