@@ -1,6 +1,8 @@
 import random
 import arcade
 import math
+import json
+import os
 
 SPRITE_SCALING = 1.2
 PLAYER_MOVEMENT_SPEED = 5
@@ -8,6 +10,28 @@ PLAYER_MOVEMENT_SPEED = 5
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 WINDOW_TITLE = "Sprite Change Coins"
+
+HIGHSCORE_FILE = "highscore.json"
+
+def load_highscore():
+    """Load highscore from file, return 0 if file doesn't exist"""
+    try:
+        if os.path.exists(HIGHSCORE_FILE):
+            with open(HIGHSCORE_FILE, 'r') as f:
+                data = json.load(f)
+                return data.get('highscore', 0)
+        return 0
+    except:
+        return 0
+
+def save_highscore(score):
+    """Save highscore to file"""
+    try:
+        data = {'highscore': score}
+        with open(HIGHSCORE_FILE, 'w') as f:
+            json.dump(data, f)
+    except:
+        pass  # Silently fail if we can't save
 
 
 class Collectable(arcade.Sprite):
@@ -84,7 +108,7 @@ class StartView(arcade.View):
     
     def __init__(self):
         super().__init__()
-        self.background_color = arcade.color.DARK_BLUE
+        self.background_color = (0, 16, 56)  # #001038
         
         # Create sprite list for titlescreen
         self.titlescreen_list = arcade.SpriteList()
@@ -96,6 +120,9 @@ class StartView(arcade.View):
         except:
             # If loading fails, create empty list
             self.titlescreen_sprite = None
+            
+        # Load highscore
+        self.highscore = load_highscore()
         
 
     
@@ -122,6 +149,20 @@ class StartView(arcade.View):
         else:
             # Fallback if titlescreen can't be loaded - no text, just show blank screen
             pass
+            
+        # Draw highscore in top-right corner
+        if self.highscore > 0:
+            arcade.draw_text(
+                f"High Score: {self.highscore}",
+                self.window.width - 20,
+                self.window.height - 40,
+                arcade.color.YELLOW,
+                font_size=24,
+                anchor_x="right",
+                font_name="Arial",
+                bold=True
+            )
+
     
     def on_update(self, delta_time):
         """Update start screen"""
@@ -139,7 +180,7 @@ class StartView(arcade.View):
             self.window.set_fullscreen(not self.window.fullscreen)
         elif key == arcade.key.ESCAPE:
             # Quit the game
-            
+
             self.window.close()
 
 
@@ -151,12 +192,21 @@ class GameOverView(arcade.View):
         self.final_score = final_score
         self.background_color = arcade.color.BLACK
         
+        # Load current highscore and check if we have a new one
+        self.highscore = load_highscore()
+        self.is_new_highscore = final_score > self.highscore
+        
+        # Update highscore if needed
+        if self.is_new_highscore:
+            self.highscore = final_score
+            save_highscore(final_score)
+        
         # Button system
         self.selected_button = 0  # 0 = Restart, 1 = Start Screen, 2 = Quit
         self.buttons = [
-            {"text": "RESTART GAME",  "action": "restart"},
-            {"text": "START SCREEN",  "action": "start_screen"},
-            {"text": "QUIT GAME",  "action": "quit"}
+            {"text": "RESTART GAME", "action": "restart"},
+            {"text": "START SCREEN", "action": "start_screen"},
+            {"text": "QUIT GAME", "action": "quit"}
         ]
         
         # Animation timer for button glow effect
@@ -183,15 +233,45 @@ class GameOverView(arcade.View):
         )
         
         # Draw final score
+        score_color = arcade.color.YELLOW if self.is_new_highscore else arcade.color.WHITE
         arcade.draw_text(
             f"Final Score: {self.final_score}",
             center_x,
-            center_y,
-            arcade.color.WHITE,
+            center_y + 10,
+            score_color,
             font_size=30,
             anchor_x="center",
-            font_name="Arial"
+            font_name="Arial",
+            bold=self.is_new_highscore
         )
+        
+        # Draw NEW HIGHSCORE message if applicable
+        if self.is_new_highscore:
+            # Animated glow effect
+            glow_alpha = int(128 + 127 * math.sin(self.animation_timer * 8))
+            glow_color = (*arcade.color.GOLD[:3], glow_alpha)
+            
+            arcade.draw_text(
+                "NEW HIGH SCORE!",
+                center_x,
+                center_y - 30,
+                arcade.color.GOLD,
+                font_size=24,
+                anchor_x="center",
+                font_name="Arial",
+                bold=True
+            )
+        else:
+            # Show current highscore
+            arcade.draw_text(
+                f"High Score: {self.highscore}",
+                center_x,
+                center_y - 30,
+                arcade.color.GRAY,
+                font_size=20,
+                anchor_x="center",
+                font_name="Arial"
+            )
         
        
         # Draw buttons
@@ -330,6 +410,16 @@ class GameView(arcade.View):
             font_name="Arial",
             bold=True
         )
+        
+        # Load highscore for display
+        self.highscore = load_highscore()
+        self.highscore_text = arcade.Text(
+            f"High Score: {self.highscore}",
+            20, 0,  # y will be set dynamically
+            arcade.color.YELLOW,
+            font_size=16,
+            font_name="Arial"
+        )
 
     def setup(self):
         """ Set up the game and initialize the variables. """
@@ -372,6 +462,13 @@ class GameView(arcade.View):
         except:
             # Fallback if sound doesn't exist
             self.collect_sound = None
+            
+        # Load die sound
+        try:
+            self.die_sound = arcade.load_sound("sound/die.mp3")
+        except:
+            # Fallback if sound doesn't exist
+            self.die_sound = None
 
         # Set the background color (we'll draw a custom background instead)
         self.background_color = arcade.color.DARK_GREEN
@@ -467,6 +564,12 @@ class GameView(arcade.View):
         self.score_text.text = f"Score: {self.score}"
         self.score_text.y = self.window.height - 40
         self.score_text.draw()
+        
+        # Draw highscore below current score
+        if self.highscore > 0:
+            self.highscore_text.text = f"High Score: {self.highscore}"
+            self.highscore_text.y = self.window.height - 65
+            self.highscore_text.draw()
 
     def draw_background(self):
         """Draw an optimized animated background"""
@@ -545,8 +648,9 @@ class GameView(arcade.View):
         num_printers = random.randint(3, 5)
         
         for i in range(num_printers):
-            # Create a printer sprite using the custom printer texture
-            printer = arcade.Sprite("WarioSprites/printer.png", scale=1.5)
+            # Create a printer sprite using the custom printer texture with random size
+            random_scale = random.uniform(1.0, 2.5)  # Random scale between 1.0 and 2.5
+            printer = arcade.Sprite("WarioSprites/printer.png", scale=random_scale)
             
             # Find a random x position that doesn't overlap with existing printers
             # Use actual window width for proper positioning in fullscreen
@@ -558,7 +662,7 @@ class GameView(arcade.View):
                 # Check if this position is too close to any existing position
                 too_close = False
                 for used_x in used_positions:
-                    if abs(random_x - used_x) < 80:  # Minimum 80 pixels apart
+                    if abs(random_x - used_x) < 120:  # Minimum 120 pixels apart (increased for larger printers)
                         too_close = True
                         break
                 
@@ -699,6 +803,15 @@ class GameView(arcade.View):
                 coin.collection_timer = 0.0  # Initialize collection timer
                 self.score += 1
                 
+                # Make Wario fatter with each burger collected
+                current_scale = self.player_sprite.scale
+                if isinstance(current_scale, tuple):
+                    # If scale is a tuple, increase both x and y scale
+                    self.player_sprite.scale = (current_scale[0] + 0.1, current_scale[1] + 0.1)
+                else:
+                    # If scale is a float, just add to it
+                    self.player_sprite.scale = current_scale + 0.1
+                
                 # Play collection sound
                 if self.collect_sound:
                     arcade.play_sound(self.collect_sound)
@@ -714,6 +827,10 @@ class GameView(arcade.View):
         # Check for collision with printers (game over)
         printer_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.printer_list)
         if printer_hit_list:
+            # Play die sound
+            if self.die_sound:
+                arcade.play_sound(self.die_sound)
+            
             # Player hit a printer - game over!
             game_over_view = GameOverView(self.score)
             self.window.show_view(game_over_view)
