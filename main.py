@@ -63,7 +63,7 @@ class Collectable(arcade.Sprite):
     def setup_burger_animation(self):
         """Setup burger texture"""
         # Load the single burger image
-        burger_texture = arcade.load_texture("WarioSprites/burger1.png")
+        burger_texture = arcade.load_texture("WarioSprites/burger.png")
         
         # Create animation frames list with just one frame
         self.animation_frames = [burger_texture]
@@ -106,9 +106,10 @@ class Collectable(arcade.Sprite):
 class Enemy(arcade.Sprite):
     """Enemy sprite that moves horizontally across screen"""
     
-    def __init__(self, scale, direction):
+    def __init__(self, scale, direction, window_width=1280):
         super().__init__(scale=scale)
         self.direction = direction  # 1 for right, -1 for left
+        self.window_width = window_width  # Store window width for boundary checking
         
         # Load random food texture from food folder
         food_files = [
@@ -141,10 +142,10 @@ class Enemy(arcade.Sprite):
         # Rotate the food sprite
         self.angle += self.rotation_speed
         
-        # Remove enemy when it goes off screen
-        if self.direction > 0 and self.left > 1300:  # Moving right, off right edge
+        # Remove enemy when it goes completely off screen using stored window width
+        if self.direction > 0 and self.left > self.window_width + 50:  # Moving right, completely off right edge
             self.remove_from_sprite_lists()
-        elif self.direction < 0 and self.right < -50:  # Moving left, off left edge
+        elif self.direction < 0 and self.right < -50:  # Moving left, completely off left edge
             self.remove_from_sprite_lists()
 
 
@@ -724,9 +725,21 @@ class GameView(arcade.View):
         num_printers = random.randint(3, 5)
         
         for i in range(num_printers):
-            # Create a printer sprite using the custom printer texture with random size
-            random_scale = random.uniform(1.0, 2.5)  # Random scale between 1.0 and 2.5
-            printer = arcade.Sprite("WarioSprites/printer.png", scale=random_scale)
+            # Create a printer sprite scaled down to 32x32 pixels first
+            printer = arcade.Sprite("WarioSprites/printer.png")
+            
+            # Step 1: Calculate base scale to make it 32x32 pixels (initial scale down)
+            target_size = 32
+            if printer.texture.width > 0:  # Avoid division by zero
+                base_scale_factor = target_size / max(printer.texture.width, printer.texture.height)
+            else:
+                base_scale_factor = 0.1  # Fallback scale
+            
+            # Step 2: Apply random upscaling on top of the base scale
+            random_upscale = random.uniform(0.8, 3.0)  # Random scale multiplier between 0.8x and 3.0x
+            final_scale = base_scale_factor * random_upscale
+            
+            printer.scale = final_scale
             
             # Find a random x position that doesn't overlap with existing printers
             # Use actual window width for proper positioning in fullscreen
@@ -741,6 +754,11 @@ class GameView(arcade.View):
                     if abs(random_x - used_x) < 120:  # Minimum 120 pixels apart (increased for larger printers)
                         too_close = True
                         break
+                
+                # Also check if too close to player (avoid spawning directly above player)
+                player_distance = abs(random_x - self.player_sprite.center_x)
+                if player_distance < 150:  # Minimum 150 pixels away from player
+                    too_close = True
                 
                 if not too_close:
                     used_positions.append(random_x)
@@ -760,12 +778,12 @@ class GameView(arcade.View):
             printer.center_x = random_x
             # Use actual window height for proper positioning in fullscreen
             actual_height = self.window.height
-            printer.center_y = actual_height + 20  # Start above the screen (y=0 is bottom)
+            printer.center_y = actual_height + 100  # Start further above the screen for more reaction time
             
             # Calculate falling speed based on score (faster with more coins)
-            base_speed = 2
-            speed_increase = self.score * 0.1  # 0.1 speed increase per coin
-            max_speed = 8  # Maximum falling speed
+            base_speed = 1.5  # Reduced from 2 to 1.5 for gentler start
+            speed_increase = self.score * 0.05  # Reduced from 0.1 to 0.05 for slower acceleration
+            max_speed = 6  # Reduced maximum speed from 8 to 6
             printer.change_y = -min(base_speed + speed_increase, max_speed)
             
             # Add to the printer list
@@ -773,8 +791,15 @@ class GameView(arcade.View):
 
     def spawn_enemies(self):
         """Spawn enemies from left and right sides of screen"""
-        # Spawn 2-4 enemies randomly (increased from 1-2)
-        num_enemies = random.randint(2, 4)
+        # Calculate number of enemies based on score (gradually increasing)
+        base_enemies = 2  # Start with minimum 2 enemies
+        score_bonus = self.score // 5  # +1 enemy for every 5 points
+        max_enemies = 8  # Cap at 8 enemies per spawn
+        
+        min_enemies = min(base_enemies + score_bonus, max_enemies)
+        max_enemies_spawn = min(base_enemies + score_bonus + 2, max_enemies)
+        
+        num_enemies = random.randint(min_enemies, max_enemies_spawn)
         
         for i in range(num_enemies):
             # Random scale for enemy size variety
@@ -785,11 +810,11 @@ class GameView(arcade.View):
             
             if spawn_from_left:
                 # Spawn from left side, moving right
-                enemy = Enemy(scale=enemy_scale, direction=1)
+                enemy = Enemy(scale=enemy_scale, direction=1, window_width=self.window.width)
                 enemy.center_x = -30  # Start off left edge
             else:
                 # Spawn from right side, moving left
-                enemy = Enemy(scale=enemy_scale, direction=-1)
+                enemy = Enemy(scale=enemy_scale, direction=-1, window_width=self.window.width)
                 enemy.center_x = self.window.width + 30  # Start off right edge
             
             # Random Y position (middle area of screen to avoid printers)
