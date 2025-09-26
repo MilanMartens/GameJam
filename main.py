@@ -1,6 +1,6 @@
 import random
 import arcade
-import math
+import math 
 import json
 import os
 
@@ -635,46 +635,60 @@ class GameView(arcade.View):
 
     def draw_background(self):
         """Draw an optimized animated background"""
-        # Get current window dimensions for dynamic scaling
-        width = self.window.width
-        height = self.window.height
-        
-        # Simple gradient background - reduced from 20 to 10 rectangles for better performance
+        # Simpler, stable Wario-themed background (purple -> magenta gradient)
+        width = int(self.window.width)
+        height = int(self.window.height)
+
+        steps = 8
+        for i in range(steps):
+            t = i / max(1, steps - 1)
+            # Interpolate between two purple shades
+            r = int((30 * (1 - t)) + (140 * t))
+            g = int((8 * (1 - t)) + (24 * t))
+            b = int((60 * (1 - t)) + (180 * t))
+            arcade.draw_lrbt_rectangle_filled(0, width, (height / steps) * i, (height / steps) * (i + 1), (r, g, b, 255))
+
+        # Large subtle gold emblem behind the play area (use circle for safety)
+        emblem_alpha = int(30 + 15 * math.sin(self.background_timer * 1.5))
+        emblem_radius = int(min(width, height) * 0.45)
+        arcade.draw_circle_filled(width // 2, height // 2 + 40, emblem_radius, (212, 175, 55, emblem_alpha))
+
+        # Diagonal gold accents (low alpha to avoid overpowering)
+        accent_count = 6
+        for i in range(accent_count):
+            x = (i - 1) * (width // (accent_count - 1)) + int((math.sin(self.background_timer * 0.6 + i) * 40))
+            # Draw a rotated rectangle by computing its four corners and using draw_polygon_filled
+            stripe_w = max(12, width // 60)
+            angle_deg = 20
+            angle = math.radians(angle_deg)
+            cx = x
+            cy = height // 2
+            hw = width / 2
+            hh = stripe_w / 2
+            cos_a = math.cos(angle)
+            sin_a = math.sin(angle)
+            pts = []
+            for lx, ly in [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)]:
+                rx = cx + lx * cos_a - ly * sin_a
+                ry = cy + lx * sin_a + ly * cos_a
+                pts.append((rx, ry))
+            arcade.draw_polygon_filled(pts, (210, 180, 0, 25))
+
+        # Floating gold coins (small decorative circles)
+        coin_count = 7
+        for i in range(coin_count):
+            cx = int((width / coin_count) * i + 40 + math.sin(self.background_timer * 0.5 + i) * 30)
+            cy = int(height * 0.7 + math.cos(self.background_timer * 0.4 + i) * 30)
+            r = 8 + (i % 3) * 3
+            arcade.draw_circle_filled(cx, cy, r, (212, 175, 55, 220))
+            arcade.draw_circle_filled(cx - r // 3, cy + r // 3, r // 2, (255, 235, 155, 160))
+
+        # Small sparkles
         for i in range(10):
-            y_pos = (height / 10) * i
-            color_intensity = int(30 + (i * 12))  # Gradually lighter
-            
-            arcade.draw_lrbt_rectangle_filled(
-                0, width, y_pos, y_pos + (height / 10),
-                (color_intensity, color_intensity + 40, color_intensity, 255)
-            )
-        
-        # Reduced floating decorations - only 4 instead of 8
-        for i in range(4):
-            base_x = (width / 4) * i + 100
-            base_y = height * 0.8 + math.sin(self.background_timer * 0.5 + i) * 20
-            
-            # Single cloud circle instead of 3 for performance
-            arcade.draw_circle_filled(
-                base_x,
-                base_y,
-                30,
-                (255, 255, 255, 20)  # Semi-transparent white
-            )
-        
-        # Reduced twinkling stars - only 8 instead of 15
-        for i in range(8):
-            star_x = (width / 8) * i + 50
-            star_y = height * 0.9 + math.sin(self.background_timer * 2 + i) * 15
-            
-            # Simpler twinkling effect
-            twinkle = math.sin(self.background_timer * 2 + i) * 0.5 + 0.5
-            star_alpha = int(80 + twinkle * 100)
-            
-            arcade.draw_circle_filled(
-                star_x, star_y, 2,
-                (255, 255, 200, star_alpha)
-            )
+            sx = int((width / 10) * i + math.sin(self.background_timer * 2 + i) * 20)
+            sy = int(height * 0.9 + math.cos(self.background_timer * 3 + i) * 10)
+            alpha = int(80 + 60 * (math.sin(self.background_timer * 3 + i) * 0.5 + 0.5))
+            arcade.draw_circle_filled(sx, sy, 2, (255, 255, 200, alpha))
 
     def spawn_coins(self, num_coins=3):
         """Spawn new burgers at random locations"""
