@@ -103,6 +103,30 @@ class Collectable(arcade.Sprite):
                 self.center_y += delta_time * 50
 
 
+class Enemy(arcade.Sprite):
+    """Enemy sprite that moves horizontally across screen"""
+    
+    def __init__(self, scale, direction):
+        super().__init__(scale=scale)
+        self.direction = direction  # 1 for right, -1 for left
+        
+        # Load enemy texture
+        self.texture = arcade.load_texture("WarioSprites/Run1Wario.png")
+        
+        # Set horizontal speed
+        self.speed = random.uniform(3.0, 6.0)  # Random speed between 3-6 (increased from 2-4)
+        self.change_x = self.speed * self.direction
+        
+    def update(self, delta_time=1/60):
+        super().update()
+        
+        # Remove enemy when it goes off screen
+        if self.direction > 0 and self.left > 1300:  # Moving right, off right edge
+            self.remove_from_sprite_lists()
+        elif self.direction < 0 and self.right < -50:  # Moving left, off left edge
+            self.remove_from_sprite_lists()
+
+
 class StartView(arcade.View):
     """Start screen with titlescreen image"""
     
@@ -380,6 +404,7 @@ class GameView(arcade.View):
         self.player_list = None
         self.coin_list = None
         self.printer_list = None
+        self.enemy_list = None
 
         # Set up the player
         self.score = 0
@@ -400,6 +425,10 @@ class GameView(arcade.View):
         # Coin spawning system
         self.coin_spawn_timer = 0.0
         self.coin_spawn_interval = 5.0  # 5 seconds
+        
+        # Enemy spawning system
+        self.enemy_spawn_timer = 0.0
+        self.enemy_spawn_interval = 3.0  # 3 seconds (reduced from 4)
         
         # Performance optimization: Pre-create Text objects
         self.score_text = arcade.Text(
@@ -428,6 +457,7 @@ class GameView(arcade.View):
         self.player_list = arcade.SpriteList()
         self.coin_list = arcade.SpriteList()
         self.printer_list = arcade.SpriteList()
+        self.enemy_list = arcade.SpriteList()
 
         # Set up the player
         self.score = 0
@@ -458,7 +488,7 @@ class GameView(arcade.View):
 
         # Load collection sound
         try:
-            self.collect_sound = arcade.load_sound(":resources:sounds/coin1.wav")
+            self.collect_sound = arcade.load_sound("sound/eating.mp3")
         except:
             # Fallback if sound doesn't exist
             self.collect_sound = None
@@ -554,6 +584,7 @@ class GameView(arcade.View):
         self.coin_list.draw()
         self.player_list.draw()
         self.printer_list.draw()
+        self.enemy_list.draw()
 
         # Draw score box in top-left corner
         self.draw_score_box()
@@ -695,6 +726,33 @@ class GameView(arcade.View):
             # Add to the printer list
             self.printer_list.append(printer)
 
+    def spawn_enemies(self):
+        """Spawn enemies from left and right sides of screen"""
+        # Spawn 2-4 enemies randomly (increased from 1-2)
+        num_enemies = random.randint(2, 4)
+        
+        for i in range(num_enemies):
+            # Random scale for enemy size variety
+            enemy_scale = random.uniform(1.0, 2.0)
+            
+            # Randomly choose to spawn from left or right
+            spawn_from_left = random.choice([True, False])
+            
+            if spawn_from_left:
+                # Spawn from left side, moving right
+                enemy = Enemy(scale=enemy_scale, direction=1)
+                enemy.center_x = -30  # Start off left edge
+            else:
+                # Spawn from right side, moving left
+                enemy = Enemy(scale=enemy_scale, direction=-1)
+                enemy.center_x = self.window.width + 30  # Start off right edge
+            
+            # Random Y position (middle area of screen to avoid printers)
+            enemy.center_y = random.randrange(100, self.window.height - 100)
+            
+            # Add to enemy list
+            self.enemy_list.append(enemy)
+
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed."""
         if key == arcade.key.UP:
@@ -780,11 +838,26 @@ class GameView(arcade.View):
                 self.spawn_printers()
                 self.printer_spawn_timer = 0.0  # Reset timer
 
+        # Enemy spawning system - start spawning after score 3
+        if self.score >= 3:
+            self.enemy_spawn_timer += delta_time
+            
+            # Calculate dynamic spawn interval (faster with higher score)
+            base_interval = 3.0  # Base 3 seconds (reduced from 4)
+            interval_decrease = self.score * 0.08  # 0.08 seconds less per point (increased from 0.05)
+            min_interval = 1.5  # Minimum 1.5 seconds between spawns (reduced from 2)
+            current_interval = max(base_interval - interval_decrease, min_interval)
+            
+            if self.enemy_spawn_timer >= current_interval:
+                self.spawn_enemies()
+                self.enemy_spawn_timer = 0.0  # Reset timer
+
         # Call update on all sprites (The sprites don't do much in this
         # example though.)
         self.player_list.update()
         self.coin_list.update()
         self.printer_list.update()
+        self.enemy_list.update()
 
         # Remove printers that have fallen off the screen
         for printer in self.printer_list:
@@ -832,6 +905,17 @@ class GameView(arcade.View):
                 arcade.play_sound(self.die_sound)
             
             # Player hit a printer - game over!
+            game_over_view = GameOverView(self.score)
+            self.window.show_view(game_over_view)
+            
+        # Check for collision with enemies (game over)
+        enemy_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.enemy_list)
+        if enemy_hit_list:
+            # Play die sound
+            if self.die_sound:
+                arcade.play_sound(self.die_sound)
+            
+            # Player hit an enemy - game over!
             game_over_view = GameOverView(self.score)
             self.window.show_view(game_over_view)
 
